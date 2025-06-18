@@ -400,62 +400,133 @@ const ZipGame = () => {
   };
 
   const handleHint = () => {
-    // Find the next numbered cell that needs to be connected
-    const numberedCells = gameState.grid
-      .flat()
-      .filter((cell) => cell.isNumbered)
-      .sort((a, b) => (a.number || 0) - (b.number || 0));
-
-    let nextNumberToConnect = 1;
-    for (let i = 0; i < numberedCells.length - 1; i++) {
-      const current = numberedCells[i];
-      const next = numberedCells[i + 1];
-      if (!findPathBetweenCells(gameState.grid, current, next)) {
-        nextNumberToConnect = next.number || 1;
-        break;
-      }
-    }
-
-    // Find the solution path segment for this number
-    const solutionIndex = gameState.solutionPath.findIndex(([row, col]) => {
-      const cell = gameState.grid[row][col];
-      return cell.isNumbered && cell.number === nextNumberToConnect;
-    });
-
-    if (solutionIndex >= 0) {
-      // Highlight the next few steps in the solution path
-      const hintLength = 3;
-      const hintPath = gameState.solutionPath.slice(
-        Math.max(0, solutionIndex - 1),
-        solutionIndex + hintLength
-      );
+    // If no path exists, start with the first two cells of the solution
+    if (gameState.currentPath.length === 0) {
+      const [firstCell, secondCell] = gameState.solutionPath;
+      const firstCellId = `${firstCell[0]}-${firstCell[1]}`;
+      const secondCellId = `${secondCell[0]}-${secondCell[1]}`;
 
       const newGrid = gameState.grid.map((row) =>
         row.map((cell) => ({
           ...cell,
-          isHighlighted: hintPath.some(
-            ([r, c]) => r === cell.row && c === cell.col
-          ),
+          isFilled: cell.id === firstCellId || cell.id === secondCellId,
+          isPath: cell.id === firstCellId || cell.id === secondCellId,
         }))
       );
 
       setGameState((prev) => ({
         ...prev,
         grid: newGrid,
+        currentPath: [firstCellId, secondCellId],
         hintsUsed: prev.hintsUsed + 1,
       }));
 
-      // Clear hint after a delay
-      setTimeout(() => {
-        setGameState((prev) => ({
-          ...prev,
-          grid: prev.grid.map((row) =>
-            row.map((cell) => ({ ...cell, isHighlighted: false }))
-          ),
-        }));
-      }, 2000);
+      const firstCellInPath = gameState.grid[firstCell[0]][firstCell[1]];
+      const secondCellInPath = gameState.grid[secondCell[0]][secondCell[1]];
 
-      toast.info(`Connect to number ${nextNumberToConnect}!`);
+      if (firstCellInPath.isNumbered && secondCellInPath.isNumbered) {
+        toast.info(
+          `Connected number ${firstCellInPath.number} to ${secondCellInPath.number}!`
+        );
+      } else if (firstCellInPath.isNumbered) {
+        toast.info(`Started path from number ${firstCellInPath.number}!`);
+      } else {
+        toast.info("Started the path!");
+      }
+      return;
+    }
+
+    // Convert current path to coordinates for comparison
+    const currentPathCoords = gameState.currentPath.map((cellId) => {
+      const [row, col] = cellId.split("-").map(Number);
+      return [row, col];
+    });
+
+    // Find the last position in the current path that matches the solution path
+    let lastCorrectIndex = -1;
+    let solutionIndex = -1;
+
+    for (let i = 0; i < currentPathCoords.length; i++) {
+      const [currentRow, currentCol] = currentPathCoords[i];
+      const foundIndex = gameState.solutionPath.findIndex(
+        ([row, col]) => row === currentRow && col === currentCol
+      );
+
+      if (foundIndex !== -1) {
+        // Check if this cell is in the correct sequence
+        const previousCellCorrect =
+          i === 0 ||
+          (currentPathCoords[i - 1][0] ===
+            gameState.solutionPath[foundIndex - 1]?.[0] &&
+            currentPathCoords[i - 1][1] ===
+              gameState.solutionPath[foundIndex - 1]?.[1]);
+
+        if (previousCellCorrect) {
+          lastCorrectIndex = i;
+          solutionIndex = foundIndex;
+        }
+      }
+    }
+
+    // If we found a deviation, revert to the last correct cell
+    if (lastCorrectIndex !== currentPathCoords.length - 1) {
+      const correctPath = gameState.currentPath.slice(0, lastCorrectIndex + 1);
+      const newGrid = gameState.grid.map((row) =>
+        row.map((cell) => ({
+          ...cell,
+          isFilled: correctPath.includes(cell.id),
+          isPath: correctPath.includes(cell.id),
+        }))
+      );
+
+      setGameState((prev) => ({
+        ...prev,
+        grid: newGrid,
+        currentPath: correctPath,
+        hintsUsed: prev.hintsUsed + 1,
+      }));
+
+      toast.warning("Reverting to last correct position!");
+      return;
+    }
+
+    // Continue with the next correct cell
+    if (
+      solutionIndex >= 0 &&
+      solutionIndex < gameState.solutionPath.length - 1
+    ) {
+      const nextCell = gameState.solutionPath[solutionIndex + 1];
+      const nextCellId = `${nextCell[0]}-${nextCell[1]}`;
+
+      const newGrid = gameState.grid.map((row) =>
+        row.map((cell) => ({
+          ...cell,
+          isFilled: cell.id === nextCellId ? true : cell.isFilled,
+          isPath: cell.id === nextCellId ? true : cell.isPath,
+        }))
+      );
+
+      setGameState((prev) => ({
+        ...prev,
+        grid: newGrid,
+        currentPath: [...prev.currentPath, nextCellId],
+        hintsUsed: prev.hintsUsed + 1,
+      }));
+
+      const nextCellInPath = gameState.grid[nextCell[0]][nextCell[1]];
+      if (nextCellInPath.isNumbered) {
+        toast.info(`Connected to number ${nextCellInPath.number}!`);
+      } else {
+        toast.info("Added the next cell in the path!");
+      }
+
+      const isComplete = checkWinCondition(newGrid);
+      if (isComplete) {
+        setGameState((prev) => ({ ...prev, isComplete: true }));
+        setShowCompletionAnimation(true);
+      }
+    } else {
+      toast.info("You're at the end of the path!");
     }
   };
 
