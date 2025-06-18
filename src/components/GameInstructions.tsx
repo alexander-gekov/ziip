@@ -14,61 +14,53 @@ export const GameInstructions: React.FC<GameInstructionsProps> = ({
   const [isExpanded, setIsExpanded] = useState(true);
 
   return (
-    <Card className="bg-white border-2 border-gray-200">
+    <Card className="bg-white border border-gray-200">
       <Button
         variant="ghost"
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full flex items-center justify-between p-4 hover:bg-gray-50">
-        <span className="font-medium text-gray-900">How to play</span>
-        {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+        className="w-full flex items-center justify-between py-2 px-3 hover:bg-gray-50">
+        <span className="font-medium text-gray-900 text-sm">How to play</span>
+        {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
       </Button>
 
       {isExpanded && (
-        <div className="px-4 pb-4 space-y-4 border-t border-gray-100">
-          <div className="flex items-start gap-3 mt-3">
-            <div className="flex items-center gap-2">
-              <div className="flex gap-1">
-                <div
-                  className="w-6 h-6 rounded text-white text-xs flex items-center justify-center font-bold"
-                  style={{ backgroundColor: colors.start }}>
-                  1
-                </div>
-                <div
-                  className="w-6 h-6 rounded text-white text-xs flex items-center justify-center font-bold"
-                  style={{ backgroundColor: colors.start }}>
-                  2
-                </div>
-                <div
-                  className="w-6 h-6 rounded text-white text-xs flex items-center justify-center font-bold"
-                  style={{ backgroundColor: colors.start }}>
-                  3
-                </div>
+        <div className="px-3 pb-2 space-y-2 border-t border-gray-100">
+          <div className="flex items-center gap-2 mt-2">
+            <div className="flex gap-0.5">
+              <div
+                className="w-5 h-5 rounded text-white text-xs flex items-center justify-center font-bold"
+                style={{ backgroundColor: colors.start }}>
+                1
               </div>
-              <span>Numbers to connect</span>
+              <div
+                className="w-5 h-5 rounded text-white text-xs flex items-center justify-center font-bold"
+                style={{ backgroundColor: colors.start }}>
+                2
+              </div>
+              <div
+                className="w-5 h-5 rounded text-white text-xs flex items-center justify-center font-bold"
+                style={{ backgroundColor: colors.start }}>
+                3
+              </div>
             </div>
-            <div>
-              <h3 className="font-medium text-gray-900">
-                Connect the dots in order
-              </h3>
-              <p className="text-sm text-gray-600">
-                Start from number 1 and connect to the next numbers in sequence.
+            <div className="flex-1">
+              <p className="text-sm text-gray-900 leading-tight">
+                Connect numbers in sequence, starting from 1
               </p>
             </div>
           </div>
 
-          <div className="flex items-start gap-3">
+          <div className="flex items-center gap-2">
             <div
-              className="w-8 h-8  rounded mt-1 flex items-center justify-center"
+              className="w-5 h-5 rounded flex items-center justify-center"
               style={{ backgroundColor: colors.start }}>
               <div
-                className="w-4 h-4 rounded"
+                className="w-3 h-3 rounded"
                 style={{ backgroundColor: colors.end }}></div>
             </div>
-            <div>
-              <h3 className="font-medium text-gray-900">Fill every cell</h3>
-              <p className="text-sm text-gray-600">
-                Your path must fill all empty cells in the grid to complete the
-                puzzle.
+            <div className="flex-1">
+              <p className="text-sm text-gray-900 leading-tight">
+                Fill all empty cells to complete the puzzle
               </p>
             </div>
           </div>

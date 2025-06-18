@@ -634,8 +634,8 @@ const ZipGame = () => {
 
   return (
     <ErrorBoundary>
-      <div className="min-h-screen w-full bg-gradient-to-br from-gray-50 to-gray-100 p-2 lg:p-4">
-        <div className="max-w-sm lg:max-w-md mx-auto space-y-6  w-full">
+      <div className="min-h-screen w-[90%] mx-auto bg-gradient-to-br from-gray-50 to-gray-100 p-2 lg:p-4">
+        <div className="max-w-sm lg:max-w-md mx-auto space-y-4 w-full">
           {/* Header */}
           <div className="text-center space-y-4">
             <h1 className="text-2xl font-bold text-gray-900">
@@ -700,14 +700,14 @@ const ZipGame = () => {
           {/* New Game Button */}
           <Button
             onClick={handleNewGame}
-            className="w-full bg-gray-800 hover:bg-gray-900 text-white py-3 rounded-xl font-medium">
+            className="w-full bg-gray-800 hover:bg-gray-900 text-white py-1 rounded-xl font-medium">
             New Game
           </Button>
 
           {/* Solve Button */}
           <Button
             onClick={animateSolution}
-            className="w-full text-white py-3 rounded-xl font-medium opacity-80 hover:opacity-100"
+            className="w-full text-white py-1 rounded-xl font-medium opacity-80 hover:opacity-100"
             style={{ background: gameColors.end }}>
             Solve
           </Button>

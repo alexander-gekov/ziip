@@ -13,30 +13,6 @@ const hslToRgb = (h: number, s: number, l: number) => {
   return [255 * f(0), 255 * f(8), 255 * f(4)].map(Math.round);
 };
 
-const generateHarmonousColors = () => {
-  const baseHue = Math.floor(Math.random() * 360);
-  const saturation = Math.floor(Math.random() * 10 + 85);
-  const baseLightness = Math.floor(Math.random() * 10 + 45);
-
-  const startRgb = hslToRgb(baseHue, saturation, baseLightness);
-  const endRgb = hslToRgb(
-    (baseHue + 30) % 360,
-    saturation,
-    Math.max(30, baseLightness - 10)
-  );
-
-  return {
-    start: `hsl(${baseHue}, ${saturation}%, ${baseLightness}%)`,
-    end: `hsl(${(baseHue + 30) % 360}, ${saturation}%, ${Math.max(
-      30,
-      baseLightness - 10
-    )}%)`,
-    filledBg: `rgba(${startRgb[0]}, ${startRgb[1]}, ${startRgb[2]}, 0.2)`,
-    highlightBg: `rgba(${startRgb[0]}, ${startRgb[1]}, ${startRgb[2]}, 0.4)`,
-    activeBg: `rgba(${endRgb[0]}, ${endRgb[1]}, ${endRgb[2]}, 0.3)`,
-  };
-};
-
 interface GameGridProps {
   grid: Cell[][];
   currentPath: string[];
@@ -66,8 +42,11 @@ export const GameGrid: React.FC<GameGridProps> = ({
   const gridRef = useRef<HTMLDivElement>(null);
   const [cellSize, setCellSize] = useState(60);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [pathLength, setPathLength] = useState(0);
+  const pathRef = useRef<SVGPathElement>(null);
   const gridSize = grid.length;
-  const MIN_CELL_SIZE = 20;
+  const MIN_CELL_SIZE =
+    (window.innerWidth || containerRef.current?.clientWidth) < 768 ? 20 : 40;
 
   useEffect(() => {
     const updateCellSize = () => {
@@ -137,6 +116,12 @@ export const GameGrid: React.FC<GameGridProps> = ({
     };
   }, [onMouseDown, onMouseMove, onMouseUp]);
 
+  useEffect(() => {
+    if (pathRef.current) {
+      setPathLength(pathRef.current.getTotalLength());
+    }
+  }, [currentPath]);
+
   const getPathData = () => {
     if (currentPath.length < 2) return "";
 
@@ -156,7 +141,6 @@ export const GameGrid: React.FC<GameGridProps> = ({
       const prev = points[i - 1];
       const next = i < points.length - 1 ? points[i + 1] : null;
 
-      // If current point is a numbered cell, always go through its center
       if (current.isNumbered) {
         pathData += ` L ${current.x} ${current.y}`;
         continue;
@@ -310,10 +294,20 @@ export const GameGrid: React.FC<GameGridProps> = ({
                 <stop offset="0%" stopColor={colors.start} />
                 <stop offset="100%" stopColor={colors.end} />
               </linearGradient>
+
+              <animate
+                xlinkHref="#pathAnimation"
+                attributeName="d"
+                dur="0.3s"
+                fill="freeze"
+                calcMode="spline"
+                keySplines="0.64, 0.57, 0.67, 1.53"
+              />
             </defs>
 
             {/* Shadow/outline path */}
             <path
+              ref={pathRef}
               d={getPathData()}
               stroke="url(#pathGradient)"
               strokeWidth={cellSize * 0.7}
@@ -323,9 +317,14 @@ export const GameGrid: React.FC<GameGridProps> = ({
               opacity={1}
               pathLength="1"
               className={cn(
-                "transition-all duration-300",
+                "transition-[d,stroke-dashoffset] duration-300 ease-spring",
                 showCompletionAnimation && "animate-pulse"
               )}
+              style={{
+                transition: "d 0.3s cubic-bezier(0.64, 0.57, 0.67, 1.53)",
+                strokeDasharray: pathLength,
+                strokeDashoffset: isDrawing ? 0 : pathLength * 0.15,
+              }}
             />
 
             {/* Main path with gradient and glow */}
@@ -340,9 +339,14 @@ export const GameGrid: React.FC<GameGridProps> = ({
               opacity={1}
               pathLength="1"
               className={cn(
-                "transition-all duration-300",
+                "transition-[d,stroke-dashoffset] duration-300 ease-spring",
                 showCompletionAnimation && "animate-pulse"
               )}
+              style={{
+                transition: "d 0.3s cubic-bezier(0.64, 0.57, 0.67, 1.53)",
+                strokeDasharray: pathLength,
+                strokeDashoffset: isDrawing ? 0 : pathLength * 0.15,
+              }}
             />
           </svg>
         )}
