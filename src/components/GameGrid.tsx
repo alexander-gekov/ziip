@@ -34,14 +34,14 @@ export const GameGrid: React.FC<GameGridProps> = ({
     const isPathEnd = currentPath[currentPath.length - 1] === cell.id && currentPath.length > 1;
 
     return cn(
-      "w-12 h-12 border-2 rounded-lg transition-all duration-200 cursor-pointer relative",
+      "w-12 h-12 border-2 rounded-lg transition-all duration-150 cursor-pointer relative",
       "flex items-center justify-center font-bold text-sm",
       {
         // Numbered cells
         "bg-green-500 border-green-600 text-white shadow-lg": cell.isNumbered,
         "bg-green-600 border-green-700": cell.isNumbered && isInCurrentPath,
         
-        // Path cells
+        // Current path cells (smooth highlighting)
         "bg-green-400 border-green-500": isInCurrentPath && !cell.isNumbered,
         "bg-green-300 border-green-400": cell.isFilled && !cell.isNumbered && !isInCurrentPath,
         
@@ -49,9 +49,8 @@ export const GameGrid: React.FC<GameGridProps> = ({
         "bg-white border-gray-200 hover:border-gray-300": !cell.isFilled && !cell.isNumbered && !isInCurrentPath,
         "bg-gray-100 border-gray-300": !cell.isFilled && !cell.isNumbered && !isInCurrentPath && isComplete,
         
-        // Animation states
+        // Start and end emphasis
         "scale-110 shadow-lg": isPathStart || isPathEnd,
-        "animate-pulse": isDrawing && isInCurrentPath,
       }
     );
   };
@@ -77,9 +76,9 @@ export const GameGrid: React.FC<GameGridProps> = ({
               </span>
             )}
             
-            {/* Connection indicators */}
+            {/* Smooth path indicator */}
             {currentPath.includes(cell.id) && !cell.isNumbered && (
-              <div className="absolute inset-0 bg-green-400 rounded-lg opacity-80" />
+              <div className="absolute inset-1 bg-green-500 rounded opacity-90 transition-all duration-150" />
             )}
           </div>
         ))}
