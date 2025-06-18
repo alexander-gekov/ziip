@@ -26,15 +26,24 @@ export const GameGrid: React.FC<GameGridProps> = ({
   showCompletionAnimation,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const gridRef = useRef<HTMLDivElement>(null);
   const [cellSize, setCellSize] = useState(60);
+  const [isInitialized, setIsInitialized] = useState(false);
   const gridSize = grid.length;
+  const MIN_CELL_SIZE = 20;
 
   useEffect(() => {
     const updateCellSize = () => {
       if (containerRef.current) {
-        const containerWidth = containerRef.current.clientWidth;
-        const newCellSize = Math.floor(containerWidth / gridSize);
+        const containerWidth =
+          containerRef.current.clientWidth || window.innerWidth;
+        const maxGridWidth = Math.min(containerWidth, window.innerWidth - 32);
+        const newCellSize = Math.max(
+          MIN_CELL_SIZE,
+          Math.floor(maxGridWidth / gridSize)
+        );
         setCellSize(newCellSize);
+        setIsInitialized(true);
       }
     };
 
@@ -42,6 +51,54 @@ export const GameGrid: React.FC<GameGridProps> = ({
     window.addEventListener("resize", updateCellSize);
     return () => window.removeEventListener("resize", updateCellSize);
   }, [gridSize]);
+
+  useEffect(() => {
+    const grid = gridRef.current;
+    if (!grid) return;
+
+    const handleTouchStart = (e: TouchEvent) => {
+      e.preventDefault();
+      const touch = e.touches[0];
+      const element = document.elementFromPoint(
+        touch.clientX,
+        touch.clientY
+      ) as HTMLElement;
+      const cellId = element?.getAttribute("data-cell-id");
+      if (cellId) {
+        onMouseDown(cellId);
+      }
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      e.preventDefault();
+      const touch = e.touches[0];
+      const element = document.elementFromPoint(
+        touch.clientX,
+        touch.clientY
+      ) as HTMLElement;
+      const cellId = element?.getAttribute("data-cell-id");
+      if (cellId) {
+        onMouseMove(cellId);
+      }
+    };
+
+    const handleTouchEnd = (e: TouchEvent) => {
+      e.preventDefault();
+      onMouseUp();
+    };
+
+    grid.addEventListener("touchstart", handleTouchStart, { passive: false });
+    grid.addEventListener("touchmove", handleTouchMove, { passive: false });
+    grid.addEventListener("touchend", handleTouchEnd, { passive: false });
+    grid.addEventListener("touchcancel", handleTouchEnd, { passive: false });
+
+    return () => {
+      grid.removeEventListener("touchstart", handleTouchStart);
+      grid.removeEventListener("touchmove", handleTouchMove);
+      grid.removeEventListener("touchend", handleTouchEnd);
+      grid.removeEventListener("touchcancel", handleTouchEnd);
+    };
+  }, [onMouseDown, onMouseMove, onMouseUp]);
 
   const getPathData = () => {
     if (currentPath.length < 2) return "";
@@ -158,21 +215,29 @@ export const GameGrid: React.FC<GameGridProps> = ({
     );
   };
 
+  if (!isInitialized) {
+    return <div className="flex justify-center" ref={containerRef}></div>;
+  }
+
+  const gridWidth = gridSize * cellSize;
+  const gridHeight = gridSize * cellSize;
+
   return (
-    <div className="flex justify-center" ref={containerRef}>
+    <div className="flex justify-center touch-none" ref={containerRef}>
       <div className="relative">
         {/* Grid Container */}
         <div
+          ref={gridRef}
           className={cn(
             "grid border-2 border-gray-400 bg-gray-100 rounded-lg overflow-hidden",
-            "shadow-lg transition-all duration-500",
+            "shadow-lg transition-all duration-500 touch-none",
             showCompletionAnimation && "scale-105 shadow-xl"
           )}
           style={{
             gridTemplateColumns: `repeat(${gridSize}, ${cellSize}px)`,
             gridTemplateRows: `repeat(${gridSize}, ${cellSize}px)`,
-            width: gridSize * cellSize,
-            height: gridSize * cellSize,
+            width: `${gridWidth}px`,
+            height: `${gridHeight}px`,
           }}
           onMouseUp={onMouseUp}
           onMouseLeave={onMouseLeave}>
@@ -180,12 +245,13 @@ export const GameGrid: React.FC<GameGridProps> = ({
           {grid.flat().map((cell) => (
             <div
               key={cell.id}
+              data-cell-id={cell.id}
               className={getCellClasses(cell)}
               onMouseDown={() => onMouseDown(cell.id)}
               onMouseEnter={() => onMouseMove(cell.id)}
               style={{
-                width: cellSize,
-                height: cellSize,
+                width: `${cellSize}px`,
+                height: `${cellSize}px`,
               }}>
               {cell.isNumbered && (
                 <div
@@ -206,8 +272,8 @@ export const GameGrid: React.FC<GameGridProps> = ({
         {currentPath.length > 1 && (
           <svg
             className="absolute top-0 left-0 pointer-events-none"
-            width={gridSize * cellSize}
-            height={gridSize * cellSize}
+            width={gridWidth}
+            height={gridHeight}
             style={{ zIndex: 20 }}>
             <defs>
               <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">

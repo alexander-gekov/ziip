@@ -560,8 +560,8 @@ const ZipGame = () => {
 
   return (
     <ErrorBoundary>
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-4">
-        <div className="max-w-md mx-auto space-y-6">
+      <div className="min-h-screen w-full bg-gradient-to-br from-gray-50 to-gray-100 p-2 lg:p-4">
+        <div className="max-w-sm lg:max-w-md mx-auto space-y-6  w-full">
           {/* Header */}
           <div className="text-center space-y-4">
             <h1 className="text-2xl font-bold text-gray-900">
@@ -595,21 +595,20 @@ const ZipGame = () => {
           </div>
 
           {/* Game Grid */}
-          <Card className="p-4 bg-white shadow-lg overflow-hidden">
-            <div className="w-full aspect-square">
-              <GameGrid
-                grid={gameState.grid}
-                currentPath={gameState.currentPath}
-                isDrawing={gameState.isDrawing}
-                onMouseDown={handleMouseDown}
-                onMouseMove={handleMouseMove}
-                onMouseUp={handleMouseUp}
-                onMouseLeave={handleMouseLeave}
-                isComplete={gameState.isComplete}
-                showCompletionAnimation={showCompletionAnimation}
-              />
-            </div>
-          </Card>
+
+          <div className="w-full aspect-square">
+            <GameGrid
+              grid={gameState.grid}
+              currentPath={gameState.currentPath}
+              isDrawing={gameState.isDrawing}
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseLeave}
+              isComplete={gameState.isComplete}
+              showCompletionAnimation={showCompletionAnimation}
+            />
+          </div>
 
           {/* Game Controls */}
           <GameControls
