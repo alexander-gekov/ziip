@@ -30,6 +30,40 @@ export const GameGrid: React.FC<GameGridProps> = ({
     }
   };
 
+  const getConnectionDirection = (fromId: string, toId: string) => {
+    const [fromRow, fromCol] = fromId.split('-').map(Number);
+    const [toRow, toCol] = toId.split('-').map(Number);
+    
+    if (fromRow === toRow) {
+      return fromCol < toCol ? 'right' : 'left';
+    } else {
+      return fromRow < toRow ? 'down' : 'up';
+    }
+  };
+
+  const getDirectionalLineClasses = (cell: Cell, pathIndex: number) => {
+    if (pathIndex === -1 || pathIndex === currentPath.length - 1) return '';
+    
+    const currentId = cell.id;
+    const nextId = currentPath[pathIndex + 1];
+    const direction = getConnectionDirection(currentId, nextId);
+    
+    const baseClasses = "absolute bg-green-600 z-10";
+    
+    switch (direction) {
+      case 'right':
+        return `${baseClasses} top-[45%] right-0 w-3 h-[10%] rounded-r`;
+      case 'left':
+        return `${baseClasses} top-[45%] left-0 w-3 h-[10%] rounded-l`;
+      case 'down':
+        return `${baseClasses} bottom-0 left-[45%] h-3 w-[10%] rounded-b`;
+      case 'up':
+        return `${baseClasses} top-0 left-[45%] h-3 w-[10%] rounded-t`;
+      default:
+        return '';
+    }
+  };
+
   const getCellClasses = (cell: Cell) => {
     const isInCurrentPath = currentPath.includes(cell.id);
     const isPathStart = currentPath[0] === cell.id;
@@ -72,25 +106,34 @@ export const GameGrid: React.FC<GameGridProps> = ({
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
       >
-        {grid.flat().map((cell) => (
-          <div
-            key={cell.id}
-            className={getCellClasses(cell)}
-            onClick={() => onCellClick(cell.id)}
-            onMouseEnter={() => onCellHover(cell.id)}
-          >
-            {cell.isNumbered && (
-              <span className="relative z-10 select-none">
-                {cell.number}
-              </span>
-            )}
-            
-            {/* Smooth path indicator */}
-            {currentPath.includes(cell.id) && !cell.isNumbered && (
-              <div className="absolute inset-1 bg-green-500 rounded opacity-90 transition-all duration-150" />
-            )}
-          </div>
-        ))}
+        {grid.flat().map((cell) => {
+          const pathIndex = currentPath.indexOf(cell.id);
+          
+          return (
+            <div
+              key={cell.id}
+              className={getCellClasses(cell)}
+              onClick={() => onCellClick(cell.id)}
+              onMouseEnter={() => onCellHover(cell.id)}
+            >
+              {cell.isNumbered && (
+                <span className="relative z-20 select-none">
+                  {cell.number}
+                </span>
+              )}
+              
+              {/* Smooth path indicator */}
+              {currentPath.includes(cell.id) && !cell.isNumbered && (
+                <div className="absolute inset-1 bg-green-500 rounded opacity-90 transition-all duration-150 z-10" />
+              )}
+              
+              {/* Directional connection lines */}
+              {pathIndex !== -1 && pathIndex < currentPath.length - 1 && (
+                <div className={getDirectionalLineClasses(cell, pathIndex)} />
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

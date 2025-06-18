@@ -1,3 +1,4 @@
+
 export interface NumberedCell {
   row: number;
   col: number;
@@ -25,8 +26,14 @@ const getAdjacent = (row: number, col: number, gridSize: number): Array<[number,
   return adjacent;
 };
 
-// Generate a solvable path through the grid
-const generateSolvablePath = (gridSize: number, pathLength: number): Array<[number, number]> => {
+// Generate a solvable path through the grid with gaps between numbered cells
+const generateSolvablePathWithGaps = (gridSize: number, numberCount: number): Array<[number, number]> => {
+  const totalCells = gridSize * gridSize;
+  const minPathLength = Math.max(numberCount * 2, Math.floor(totalCells * 0.4)); // Ensure reasonable path length
+  const maxPathLength = Math.floor(totalCells * 0.7); // Don't fill more than 70% of grid
+  
+  const pathLength = Math.min(maxPathLength, Math.max(minPathLength, numberCount + Math.floor(Math.random() * 10)));
+  
   const path: Array<[number, number]> = [];
   const visited = new Set<string>();
   
@@ -63,6 +70,34 @@ const generateSolvablePath = (gridSize: number, pathLength: number): Array<[numb
   return path;
 };
 
+// Select positions for numbered cells with gaps
+const selectNumberedPositions = (path: Array<[number, number]>, numberCount: number): number[] => {
+  if (path.length < numberCount) return [];
+  
+  const positions: number[] = [];
+  const minGap = Math.max(1, Math.floor(path.length / (numberCount + 1)));
+  
+  // Always include the first position
+  positions.push(0);
+  
+  // Distribute remaining numbers with random gaps
+  for (let i = 1; i < numberCount; i++) {
+    const minPos = positions[i - 1] + minGap;
+    const maxPos = Math.min(path.length - (numberCount - i), path.length - 1);
+    
+    if (minPos >= maxPos) {
+      // If we can't fit more numbers with gaps, place them consecutively
+      positions.push(Math.min(positions[i - 1] + 1, path.length - 1));
+    } else {
+      // Random position within valid range
+      const randomPos = minPos + Math.floor(Math.random() * (maxPos - minPos + 1));
+      positions.push(randomPos);
+    }
+  }
+  
+  return positions;
+};
+
 export const generateDailyLevel = (): Level => {
   // Generate a deterministic level based on current date
   const today = new Date();
@@ -79,14 +114,17 @@ export const generateDailyLevel = (): Level => {
   // Random number count between 6-12 using seeded random
   const numberOfNumbers = Math.floor(seededRandom() * 7) + 6; // 6-12
   
-  // Generate a solvable path
-  const solutionPath = generateSolvablePath(gridSize, numberOfNumbers);
+  // Generate a solvable path with more cells than numbers
+  const solutionPath = generateSolvablePathWithGaps(gridSize, numberOfNumbers);
   
-  // Place numbered cells along the solution path
-  const numberedCells: NumberedCell[] = solutionPath.map((position, index) => ({
-    row: position[0],
-    col: position[1],
-    number: index + 1
+  // Select positions for numbered cells with gaps
+  const numberedPositions = selectNumberedPositions(solutionPath, numberOfNumbers);
+  
+  // Place numbered cells at selected positions
+  const numberedCells: NumberedCell[] = numberedPositions.map((pathIndex, numberIndex) => ({
+    row: solutionPath[pathIndex][0],
+    col: solutionPath[pathIndex][1],
+    number: numberIndex + 1
   }));
 
   return {
@@ -107,14 +145,17 @@ export const generateRandomLevel = (difficulty: 'easy' | 'medium' | 'hard' = 'me
   // Random number count between 6-12
   const numCount = Math.floor(Math.random() * 7) + 6; // 6-12
   
-  // Generate a solvable path
-  const solutionPath = generateSolvablePath(gridSize, numCount);
+  // Generate a solvable path with gaps
+  const solutionPath = generateSolvablePathWithGaps(gridSize, numCount);
   
-  // Place numbered cells along the solution path
-  const numberedCells: NumberedCell[] = solutionPath.map((position, index) => ({
-    row: position[0],
-    col: position[1],
-    number: index + 1
+  // Select positions for numbered cells with gaps
+  const numberedPositions = selectNumberedPositions(solutionPath, numCount);
+  
+  // Place numbered cells at selected positions
+  const numberedCells: NumberedCell[] = numberedPositions.map((pathIndex, numberIndex) => ({
+    row: solutionPath[pathIndex][0],
+    col: solutionPath[pathIndex][1],
+    number: numberIndex + 1
   }));
 
   return {
