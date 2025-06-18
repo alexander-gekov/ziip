@@ -11,34 +11,83 @@ export interface Level {
   difficulty: 'easy' | 'medium' | 'hard';
 }
 
+// Helper function to get adjacent cells
+const getAdjacent = (row: number, col: number, gridSize: number): Array<[number, number]> => {
+  const adjacent: Array<[number, number]> = [];
+  const directions = [[-1, 0], [1, 0], [0, -1], [0, 1]]; // up, down, left, right
+  
+  for (const [dr, dc] of directions) {
+    const newRow = row + dr;
+    const newCol = col + dc;
+    if (newRow >= 0 && newRow < gridSize && newCol >= 0 && newCol < gridSize) {
+      adjacent.push([newRow, newCol]);
+    }
+  }
+  return adjacent;
+};
+
+// Generate a solvable path through the grid
+const generateSolvablePath = (gridSize: number, pathLength: number): Array<[number, number]> => {
+  const path: Array<[number, number]> = [];
+  const visited = new Set<string>();
+  
+  // Start from a random position
+  let currentRow = Math.floor(Math.random() * gridSize);
+  let currentCol = Math.floor(Math.random() * gridSize);
+  
+  path.push([currentRow, currentCol]);
+  visited.add(`${currentRow}-${currentCol}`);
+  
+  // Generate path by walking randomly but ensuring we don't get stuck
+  while (path.length < pathLength) {
+    const adjacent = getAdjacent(currentRow, currentCol, gridSize);
+    const unvisited = adjacent.filter(([r, c]) => !visited.has(`${r}-${c}`));
+    
+    if (unvisited.length === 0) {
+      // Backtrack if we get stuck
+      if (path.length <= 1) break;
+      path.pop();
+      const lastPos = path[path.length - 1];
+      currentRow = lastPos[0];
+      currentCol = lastPos[1];
+      continue;
+    }
+    
+    // Choose a random unvisited adjacent cell
+    const [nextRow, nextCol] = unvisited[Math.floor(Math.random() * unvisited.length)];
+    path.push([nextRow, nextCol]);
+    visited.add(`${nextRow}-${nextCol}`);
+    currentRow = nextRow;
+    currentCol = nextCol;
+  }
+  
+  return path;
+};
+
 export const generateDailyLevel = (): Level => {
   // Generate a deterministic level based on current date
   const today = new Date();
   const seed = today.getDate() + today.getMonth() * 31 + today.getFullYear() * 365;
   
-  // Simple random number generator with seed
-  const random = (min: number, max: number) => {
-    const x = Math.sin(seed) * 10000;
-    const rand = x - Math.floor(x);
-    return Math.floor(rand * (max - min + 1)) + min;
+  // Simple seeded random function
+  let seedValue = seed;
+  const seededRandom = () => {
+    seedValue = (seedValue * 9301 + 49297) % 233280;
+    return seedValue / 233280;
   };
 
-  const gridSize = 6; // Fixed 6x6 grid like in the image
+  const gridSize = 6;
+  const numberOfNumbers = 8;
   
-  // Generate numbered cells in a pattern that creates a solvable puzzle
-  const numberedCells: NumberedCell[] = [
-    { row: 2, col: 1, number: 1 }, // Similar to the reference image
-    { row: 4, col: 1, number: 2 },
-    { row: 2, col: 2, number: 3 },
-    { row: 4, col: 2, number: 4 },
-    { row: 3, col: 3, number: 5 },
-    { row: 1, col: 4, number: 6 },
-    { row: 4, col: 4, number: 7 },
-    { row: 5, col: 1, number: 8 },
-    { row: 1, col: 1, number: 9 },
-    { row: 1, col: 2, number: 10 },
-    { row: 0, col: 2, number: 11 }
-  ];
+  // Generate a solvable path
+  const solutionPath = generateSolvablePath(gridSize, numberOfNumbers);
+  
+  // Place numbered cells along the solution path
+  const numberedCells: NumberedCell[] = solutionPath.map((position, index) => ({
+    row: position[0],
+    col: position[1],
+    number: index + 1
+  }));
 
   return {
     gridSize,
@@ -63,20 +112,15 @@ export const generateRandomLevel = (difficulty: 'easy' | 'medium' | 'hard' = 'me
   const gridSize = gridSizes[difficulty];
   const numCount = numbersCount[difficulty];
   
-  const numberedCells: NumberedCell[] = [];
-  const usedPositions = new Set<string>();
-
-  for (let i = 1; i <= numCount; i++) {
-    let row, col, posKey;
-    do {
-      row = Math.floor(Math.random() * gridSize);
-      col = Math.floor(Math.random() * gridSize);
-      posKey = `${row}-${col}`;
-    } while (usedPositions.has(posKey));
-
-    usedPositions.add(posKey);
-    numberedCells.push({ row, col, number: i });
-  }
+  // Generate a solvable path
+  const solutionPath = generateSolvablePath(gridSize, numCount);
+  
+  // Place numbered cells along the solution path
+  const numberedCells: NumberedCell[] = solutionPath.map((position, index) => ({
+    row: position[0],
+    col: position[1],
+    number: index + 1
+  }));
 
   return {
     gridSize,
