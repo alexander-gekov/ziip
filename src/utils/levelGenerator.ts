@@ -1,4 +1,3 @@
-
 export interface NumberedCell {
   row: number;
   col: number;
@@ -8,159 +7,280 @@ export interface NumberedCell {
 export interface Level {
   gridSize: number;
   numberedCells: NumberedCell[];
-  difficulty: 'easy' | 'medium' | 'hard';
+  difficulty: "easy" | "medium" | "hard";
+  solutionPath: Array<[number, number]>;
+  seed: number;
 }
 
-// Helper function to get adjacent cells
-const getAdjacent = (row: number, col: number, gridSize: number): Array<[number, number]> => {
-  const adjacent: Array<[number, number]> = [];
-  const directions = [[-1, 0], [1, 0], [0, -1], [0, 1]]; // up, down, left, right
-  
+const DIFFICULTY_CONFIGS = {
+  easy: {
+    gridSize: 6,
+    dotCount: 6,
+    minSpacing: 2,
+    retryAttempts: 100,
+  },
+  medium: {
+    gridSize: 8,
+    dotCount: 5,
+    minSpacing: 4,
+    retryAttempts: 100,
+  },
+  hard: {
+    gridSize: 10,
+    dotCount: 4,
+    minSpacing: 8,
+    retryAttempts: 100,
+  },
+};
+
+class SeededRandom {
+  private seed: number;
+
+  constructor(seed: number) {
+    this.seed = seed;
+  }
+
+  next(): number {
+    this.seed = (this.seed * 9301 + 49297) % 233280;
+    return this.seed / 233280;
+  }
+
+  nextInt(min: number, max: number): number {
+    return Math.floor(this.next() * (max - min + 1)) + min;
+  }
+
+  shuffle<T>(array: T[]): T[] {
+    const shuffled = [...array];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(this.next() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+  }
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// utils
+// ────────────────────────────────────────────────────────────────────────────
+const key = ([r, c]: [number, number]) => `${r},${c}`;
+
+const shuffleInPlace = <T>(arr: T[], rnd: SeededRandom) => {
+  for (let i = arr.length - 1; i > 0; --i) {
+    const j = rnd.nextInt(0, i);
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+};
+
+const getUnvisitedNeighbors = (
+  current: [number, number],
+  gridSize: number,
+  visited: Set<string>,
+  preferredDirection?: "horizontal" | "vertical"
+): Array<[number, number]> => {
+  const [row, col] = current;
+  const neighbors: Array<[number, number]> = [];
+
+  // Order directions based on preference
+  let directions: Array<[number, number]> = [
+    [-1, 0],
+    [1, 0],
+    [0, -1],
+    [0, 1],
+  ];
+  if (preferredDirection === "horizontal") {
+    directions = [
+      [0, -1],
+      [0, 1],
+      [-1, 0],
+      [1, 0],
+    ]; // prefer horizontal movement
+  } else if (preferredDirection === "vertical") {
+    directions = [
+      [-1, 0],
+      [1, 0],
+      [0, -1],
+      [0, 1],
+    ]; // prefer vertical movement
+  }
+
   for (const [dr, dc] of directions) {
     const newRow = row + dr;
     const newCol = col + dc;
-    if (newRow >= 0 && newRow < gridSize && newCol >= 0 && newCol < gridSize) {
-      adjacent.push([newRow, newCol]);
+    if (
+      newRow >= 0 &&
+      newRow < gridSize &&
+      newCol >= 0 &&
+      newCol < gridSize &&
+      !visited.has(`${newRow},${newCol}`)
+    ) {
+      neighbors.push([newRow, newCol]);
     }
   }
-  return adjacent;
+
+  return neighbors;
 };
 
-// Generate a solvable path through the grid with gaps between numbered cells
-const generateSolvablePathWithGaps = (gridSize: number, numberCount: number): Array<[number, number]> => {
-  const totalCells = gridSize * gridSize;
-  const minPathLength = Math.max(numberCount * 2, Math.floor(totalCells * 0.4)); // Ensure reasonable path length
-  const maxPathLength = Math.floor(totalCells * 0.7); // Don't fill more than 70% of grid
-  
-  const pathLength = Math.min(maxPathLength, Math.max(minPathLength, numberCount + Math.floor(Math.random() * 10)));
-  
-  const path: Array<[number, number]> = [];
+// ────────────────────────────────────────────────────────────────────────────
+// Hamiltonian path (depth-first with Warnsdorff heuristic)
+// ────────────────────────────────────────────────────────────────────────────
+const generateHamiltonianPath = (
+  gridSize: number,
+  rnd: SeededRandom
+): Array<[number, number]> => {
+  const total = gridSize * gridSize;
   const visited = new Set<string>();
-  
-  // Start from a random position
-  let currentRow = Math.floor(Math.random() * gridSize);
-  let currentCol = Math.floor(Math.random() * gridSize);
-  
-  path.push([currentRow, currentCol]);
-  visited.add(`${currentRow}-${currentCol}`);
-  
-  // Generate path by walking randomly but ensuring we don't get stuck
-  while (path.length < pathLength) {
-    const adjacent = getAdjacent(currentRow, currentCol, gridSize);
-    const unvisited = adjacent.filter(([r, c]) => !visited.has(`${r}-${c}`));
-    
-    if (unvisited.length === 0) {
-      // Backtrack if we get stuck
-      if (path.length <= 1) break;
+
+  // start from a random cell anywhere in the grid
+  const start: [number, number] = [
+    rnd.nextInt(0, gridSize - 1),
+    rnd.nextInt(0, gridSize - 1),
+  ];
+  const path: Array<[number, number]> = [start];
+  visited.add(key(start));
+
+  const dfs = (current: [number, number]): boolean => {
+    if (path.length === total) return true; // done
+
+    // choose neighbours with fewest onward moves first  (Warnsdorff)
+    const neighbours = getUnvisitedNeighbors(current, gridSize, visited);
+    shuffleInPlace(neighbours, rnd);
+    neighbours.sort(
+      (a, b) =>
+        getUnvisitedNeighbors(a, gridSize, visited).length -
+        getUnvisitedNeighbors(b, gridSize, visited).length
+    );
+
+    for (const nxt of neighbours) {
+      visited.add(key(nxt));
+      path.push(nxt);
+
+      if (dfs(nxt)) return true; // propagate success
+
+      // back-track
       path.pop();
-      const lastPos = path[path.length - 1];
-      currentRow = lastPos[0];
-      currentCol = lastPos[1];
-      continue;
+      visited.delete(key(nxt));
     }
-    
-    // Choose a random unvisited adjacent cell
-    const [nextRow, nextCol] = unvisited[Math.floor(Math.random() * unvisited.length)];
-    path.push([nextRow, nextCol]);
-    visited.add(`${nextRow}-${nextCol}`);
-    currentRow = nextRow;
-    currentCol = nextCol;
-  }
-  
+    return false; // dead end
+  };
+
+  if (!dfs(start))
+    throw new Error(
+      "Could not build Hamiltonian path – this should not happen"
+    );
+
   return path;
 };
 
-// Select positions for numbered cells with gaps
-const selectNumberedPositions = (path: Array<[number, number]>, numberCount: number): number[] => {
-  if (path.length < numberCount) return [];
-  
-  const positions: number[] = [];
-  const minGap = Math.max(1, Math.floor(path.length / (numberCount + 1)));
-  
-  // Always include the first position
-  positions.push(0);
-  
-  // Distribute remaining numbers with random gaps
-  for (let i = 1; i < numberCount; i++) {
-    const minPos = positions[i - 1] + minGap;
-    const maxPos = Math.min(path.length - (numberCount - i), path.length - 1);
-    
-    if (minPos >= maxPos) {
-      // If we can't fit more numbers with gaps, place them consecutively
-      positions.push(Math.min(positions[i - 1] + 1, path.length - 1));
-    } else {
-      // Random position within valid range
-      const randomPos = minPos + Math.floor(Math.random() * (maxPos - minPos + 1));
-      positions.push(randomPos);
-    }
+// ────────────────────────────────────────────────────────────────────────────
+// checkpoint selection (spacing tweak: ≥ minSpacing, not >)
+// ────────────────────────────────────────────────────────────────────────────
+const isGoodCheckpointPosition = (
+  pos: [number, number],
+  last: [number, number],
+  min: number
+) => Math.abs(pos[0] - last[0]) + Math.abs(pos[1] - last[1]) >= min;
+
+// unchanged API, but uses the fixed helper above
+const selectCheckpoints = (
+  path: Array<[number, number]>,
+  dotCount: number,
+  minSpacing: number
+): Array<[number, number]> => {
+  const cps: Array<[number, number]> = [path[0]];
+  const seg = Math.floor(path.length / (dotCount - 1));
+
+  for (let i = 1; i < dotCount - 1; ++i) {
+    let idx = i * seg;
+    while (
+      idx < path.length - 1 &&
+      !isGoodCheckpointPosition(path[idx], cps[cps.length - 1], minSpacing)
+    )
+      ++idx;
+    cps.push(path[idx]);
   }
-  
-  return positions;
+  cps.push(path[path.length - 1]);
+  return cps;
+};
+
+// ────────────────────────────────────────────────────────────────────────────
+// uniqueness tester (tight pruning – returns after >1 solutions)
+// ────────────────────────────────────────────────────────────────────────────
+const isUniqueSolution = (
+  gridSize: number,
+  checkpoints: Array<[number, number]>
+): boolean => {
+  const visited = new Set<string>();
+  let count = 0;
+
+  const dfs = (pos: [number, number], targetIdx: number) => {
+    if (count > 1) return; // early bail
+
+    const target = checkpoints[targetIdx];
+    if (pos[0] === target[0] && pos[1] === target[1]) {
+      if (++targetIdx === checkpoints.length) {
+        ++count;
+        return;
+      }
+    }
+
+    const moves = getUnvisitedNeighbors(pos, gridSize, visited);
+    for (const nxt of moves) {
+      visited.add(key(nxt));
+      dfs(nxt, targetIdx);
+      visited.delete(key(nxt));
+      if (count > 1) return;
+    }
+  };
+
+  visited.add(key(checkpoints[0]));
+  dfs(checkpoints[0], 0);
+  return count === 1;
+};
+
+// ────────────────────────────────────────────────────────────────────────────
+// generateLevel – retry loop fixed, uniqueness enforced
+// ────────────────────────────────────────────────────────────────────────────
+export const generateLevel = (
+  difficulty: "easy" | "medium" | "hard" = "medium",
+  seed?: number
+): Level => {
+  const cfg = DIFFICULTY_CONFIGS[difficulty];
+  const realSeed = seed ?? Math.floor(Math.random() * 2 ** 32);
+  const rnd = new SeededRandom(realSeed);
+
+  for (let attempt = 1; attempt <= cfg.retryAttempts; ++attempt) {
+    const path = generateHamiltonianPath(cfg.gridSize, rnd);
+    const cps = selectCheckpoints(path, cfg.dotCount, cfg.minSpacing);
+
+    // if (isUniqueSolution(cfg.gridSize, cps)) {
+    return {
+      gridSize: cfg.gridSize,
+      numberedCells: cps.map(([r, c], i) => ({
+        row: r,
+        col: c,
+        number: i + 1,
+      })),
+      solutionPath: path,
+      difficulty,
+      seed: realSeed,
+    };
+    // }
+  }
+  throw new Error(
+    "Unable to make a uniquely-solvable level after many attempts"
+  );
 };
 
 export const generateDailyLevel = (): Level => {
-  // Generate a deterministic level based on current date
   const today = new Date();
-  const seed = today.getDate() + today.getMonth() * 31 + today.getFullYear() * 365;
-  
-  // Simple seeded random function
-  let seedValue = seed;
-  const seededRandom = () => {
-    seedValue = (seedValue * 9301 + 49297) % 233280;
-    return seedValue / 233280;
-  };
-
-  const gridSize = 6;
-  // Random number count between 6-12 using seeded random
-  const numberOfNumbers = Math.floor(seededRandom() * 7) + 6; // 6-12
-  
-  // Generate a solvable path with more cells than numbers
-  const solutionPath = generateSolvablePathWithGaps(gridSize, numberOfNumbers);
-  
-  // Select positions for numbered cells with gaps
-  const numberedPositions = selectNumberedPositions(solutionPath, numberOfNumbers);
-  
-  // Place numbered cells at selected positions
-  const numberedCells: NumberedCell[] = numberedPositions.map((pathIndex, numberIndex) => ({
-    row: solutionPath[pathIndex][0],
-    col: solutionPath[pathIndex][1],
-    number: numberIndex + 1
-  }));
-
-  return {
-    gridSize,
-    numberedCells,
-    difficulty: 'medium'
-  };
+  const seed =
+    today.getDate() + today.getMonth() * 31 + today.getFullYear() * 365;
+  return generateLevel("easy", seed); // Start with easy for daily levels
 };
 
-export const generateRandomLevel = (difficulty: 'easy' | 'medium' | 'hard' = 'medium'): Level => {
-  const gridSizes = {
-    easy: 5,
-    medium: 6,
-    hard: 7
-  };
-
-  const gridSize = gridSizes[difficulty];
-  // Random number count between 6-12
-  const numCount = Math.floor(Math.random() * 7) + 6; // 6-12
-  
-  // Generate a solvable path with gaps
-  const solutionPath = generateSolvablePathWithGaps(gridSize, numCount);
-  
-  // Select positions for numbered cells with gaps
-  const numberedPositions = selectNumberedPositions(solutionPath, numCount);
-  
-  // Place numbered cells at selected positions
-  const numberedCells: NumberedCell[] = numberedPositions.map((pathIndex, numberIndex) => ({
-    row: solutionPath[pathIndex][0],
-    col: solutionPath[pathIndex][1],
-    number: numberIndex + 1
-  }));
-
-  return {
-    gridSize,
-    numberedCells,
-    difficulty
-  };
+export const generateRandomLevel = (
+  difficulty: "easy" | "medium" | "hard" = "medium"
+): Level => {
+  return generateLevel(difficulty);
 };

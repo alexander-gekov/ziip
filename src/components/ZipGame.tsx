@@ -1,12 +1,17 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { GameGrid } from './GameGrid';
-import { GameControls } from './GameControls';
-import { GameInstructions } from './GameInstructions';
-import { CompletionAnimation } from './CompletionAnimation';
-import { generateDailyLevel } from '../utils/levelGenerator';
-import { toast } from 'sonner';
+import React, { useState, useEffect, useCallback, ErrorInfo } from "react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { GameGrid } from "./GameGrid";
+import { GameControls } from "./GameControls";
+import { GameInstructions } from "./GameInstructions";
+import { CompletionAnimation } from "./CompletionAnimation";
+import {
+  generateDailyLevel,
+  Level,
+  NumberedCell,
+  generateRandomLevel,
+} from "../utils/levelGenerator";
+import { toast } from "sonner";
 
 export interface Cell {
   id: string;
@@ -17,6 +22,7 @@ export interface Cell {
   isFilled: boolean;
   isPath: boolean;
   isConnected: boolean;
+  isHighlighted?: boolean;
 }
 
 export interface GameState {
@@ -26,6 +32,33 @@ export interface GameState {
   isComplete: boolean;
   moves: number;
   hintsUsed: number;
+  solutionPath: Array<[number, number]>;
+}
+
+const formatTime = (seconds: number): string => {
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${mins}:${secs.toString().padStart(2, "0")}`;
+};
+
+class ErrorBoundary extends React.Component<React.PropsWithChildren<object>> {
+  state = { hasError: false };
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error("Error caught in ErrorBoundary:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return <h2>Something went wrong. Please try again later.</h2>;
+    }
+
+    return this.props.children;
+  }
 }
 
 const ZipGame = () => {
@@ -35,27 +68,58 @@ const ZipGame = () => {
     isDrawing: false,
     isComplete: false,
     moves: 0,
-    hintsUsed: 0
+    hintsUsed: 0,
+    solutionPath: [],
   });
 
+  const [difficulty, setDifficulty] = useState<"easy" | "medium" | "hard">(
+    "easy"
+  );
+  const [gridSize, setGridSize] = useState(6);
   const [gameHistory, setGameHistory] = useState<GameState[]>([]);
   const [showCompletionAnimation, setShowCompletionAnimation] = useState(false);
+  const [timeElapsed, setTimeElapsed] = useState(0);
+  const [isTimerRunning, setIsTimerRunning] = useState(false);
 
   // Initialize game with daily level
   useEffect(() => {
-    const level = generateDailyLevel();
-    initializeGrid(level);
+    try {
+      const level = generateDailyLevel();
+      setGridSize(level.gridSize);
+      setDifficulty(level.difficulty);
+      initializeGrid(level);
+    } catch (error) {
+      console.error("Failed to generate level:", error);
+      // Fallback to easy level if daily generation fails
+      const level = generateRandomLevel("easy");
+      setGridSize(level.gridSize);
+      setDifficulty(level.difficulty);
+      initializeGrid(level);
+    }
   }, []);
 
-  const initializeGrid = (level: any) => {
+  // Timer effect
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (isTimerRunning && !gameState.isComplete) {
+      interval = setInterval(() => {
+        setTimeElapsed((prev) => prev + 1);
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [isTimerRunning, gameState.isComplete]);
+
+  const initializeGrid = (level: Level) => {
     const grid: Cell[][] = [];
-    
+
     for (let row = 0; row < level.gridSize; row++) {
       const gridRow: Cell[] = [];
       for (let col = 0; col < level.gridSize; col++) {
         const cellId = `${row}-${col}`;
-        const numberedCell = level.numberedCells.find((nc: any) => nc.row === row && nc.col === col);
-        
+        const numberedCell = level.numberedCells.find(
+          (nc: NumberedCell) => nc.row === row && nc.col === col
+        );
+
         gridRow.push({
           id: cellId,
           row,
@@ -64,7 +128,8 @@ const ZipGame = () => {
           number: numberedCell?.number,
           isFilled: false,
           isPath: false,
-          isConnected: false
+          isConnected: false,
+          isHighlighted: false,
         });
       }
       grid.push(gridRow);
@@ -76,77 +141,97 @@ const ZipGame = () => {
       isDrawing: false,
       isComplete: false,
       moves: 0,
-      hintsUsed: 0
+      hintsUsed: 0,
+      solutionPath: level.solutionPath,
     });
     setGameHistory([]);
   };
 
   const saveGameState = useCallback(() => {
-    setGameHistory(prev => [...prev, { ...gameState }]);
+    setGameHistory((prev) => [...prev, { ...gameState }]);
   }, [gameState]);
 
-  const handleCellClick = (cellId: string) => {
-    const [row, col] = cellId.split('-').map(Number);
+  const handleMouseDown = (cellId: string) => {
+    const [row, col] = cellId.split("-").map(Number);
     const cell = gameState.grid[row][col];
 
     if (cell.isNumbered) {
-      // Start new path from numbered cell
-      if (!gameState.isDrawing) {
-        saveGameState();
-        setGameState(prev => ({
-          ...prev,
-          currentPath: [cellId],
-          isDrawing: true,
-          moves: prev.moves + 1
-        }));
+      if (!isTimerRunning) {
+        setIsTimerRunning(true);
       }
+      saveGameState();
+      setGameState((prev) => ({
+        ...prev,
+        currentPath: [cellId],
+        isDrawing: true,
+        moves: prev.moves + 1,
+      }));
     }
   };
 
-  const handleCellHover = (cellId: string) => {
-    if (gameState.isDrawing && !gameState.currentPath.includes(cellId)) {
-      const [row, col] = cellId.split('-').map(Number);
-      const cell = gameState.grid[row][col];
-      
-      // Check if this cell is adjacent to the last cell in path
-      if (isAdjacent(cellId, gameState.currentPath[gameState.currentPath.length - 1])) {
-        setGameState(prev => ({
-          ...prev,
-          currentPath: [...prev.currentPath, cellId]
-        }));
-      }
+  const handleMouseMove = (cellId: string) => {
+    if (!gameState.isDrawing || gameState.currentPath.includes(cellId)) return;
+
+    const lastCell = gameState.currentPath[gameState.currentPath.length - 1];
+    if (isAdjacent(cellId, lastCell)) {
+      setGameState((prev) => ({
+        ...prev,
+        currentPath: [...prev.currentPath, cellId],
+      }));
+    }
+  };
+
+  const handleMouseUp = () => {
+    if (gameState.isDrawing) {
+      finalizePath();
+    }
+  };
+
+  const handleMouseLeave = () => {
+    if (gameState.isDrawing) {
+      finalizePath();
     }
   };
 
   const isAdjacent = (cellId1: string, cellId2: string): boolean => {
-    const [row1, col1] = cellId1.split('-').map(Number);
-    const [row2, col2] = cellId2.split('-').map(Number);
-    
+    const [row1, col1] = cellId1.split("-").map(Number);
+    const [row2, col2] = cellId2.split("-").map(Number);
+
     const rowDiff = Math.abs(row1 - row2);
     const colDiff = Math.abs(col1 - col2);
-    
+
     return (rowDiff === 1 && colDiff === 0) || (rowDiff === 0 && colDiff === 1);
   };
 
   const finalizePath = () => {
-    if (gameState.currentPath.length < 2) return;
+    if (gameState.currentPath.length < 2) {
+      setGameState((prev) => ({
+        ...prev,
+        currentPath: [],
+        isDrawing: false,
+      }));
+      return;
+    }
 
-    const newGrid = gameState.grid.map(row => 
-      row.map(cell => ({
+    const newGrid = gameState.grid.map((row) =>
+      row.map((cell) => ({
         ...cell,
-        isFilled: gameState.currentPath.includes(cell.id) ? true : cell.isFilled,
-        isPath: gameState.currentPath.includes(cell.id) ? true : cell.isPath
+        isFilled: gameState.currentPath.includes(cell.id)
+          ? true
+          : cell.isFilled,
+        isPath: gameState.currentPath.includes(cell.id) ? true : cell.isPath,
+        isHighlighted: false,
       }))
     );
 
     const isComplete = checkWinCondition(newGrid);
 
-    setGameState(prev => ({
+    setGameState((prev) => ({
       ...prev,
       grid: newGrid,
       currentPath: [],
       isDrawing: false,
-      isComplete
+      isComplete,
     }));
 
     if (isComplete) {
@@ -155,12 +240,84 @@ const ZipGame = () => {
   };
 
   const checkWinCondition = (grid: Cell[][]): boolean => {
-    // Check if all numbered cells are connected in order
-    const numberedCells = grid.flat().filter(cell => cell.isNumbered).sort((a, b) => (a.number || 0) - (b.number || 0));
-    
-    // Simple win condition: all cells filled and numbered cells connected
-    const allCellsFilled = grid.flat().every(cell => cell.isFilled || cell.isNumbered);
+    // Get all numbered cells in order
+    const numberedCells = grid
+      .flat()
+      .filter((cell) => cell.isNumbered)
+      .sort((a, b) => (a.number || 0) - (b.number || 0));
+
+    // Check if all cells are filled
+    const allCellsFilled = grid
+      .flat()
+      .every((cell) => cell.isFilled || cell.isNumbered);
+
+    // Check if numbered cells are connected in order
+    for (let i = 0; i < numberedCells.length - 1; i++) {
+      const current = numberedCells[i];
+      const next = numberedCells[i + 1];
+
+      // Find a path between consecutive numbered cells
+      const pathExists = findPathBetweenCells(grid, current, next);
+      if (!pathExists) return false;
+    }
+
     return allCellsFilled && numberedCells.length > 0;
+  };
+
+  const findPathBetweenCells = (
+    grid: Cell[][],
+    start: Cell,
+    end: Cell
+  ): boolean => {
+    const visited = new Set<string>();
+    const queue: Cell[] = [start];
+    visited.add(start.id);
+
+    while (queue.length > 0) {
+      const current = queue.shift()!;
+      if (current.id === end.id) return true;
+
+      const [row, col] = current.id.split("-").map(Number);
+      const adjacent = getAdjacentCells(grid, row, col);
+
+      for (const next of adjacent) {
+        if (!visited.has(next.id) && (next.isFilled || next.isNumbered)) {
+          visited.add(next.id);
+          queue.push(next);
+        }
+      }
+    }
+
+    return false;
+  };
+
+  const getAdjacentCells = (
+    grid: Cell[][],
+    row: number,
+    col: number
+  ): Cell[] => {
+    const adjacent: Cell[] = [];
+    const directions = [
+      [-1, 0],
+      [1, 0],
+      [0, -1],
+      [0, 1],
+    ];
+
+    for (const [dr, dc] of directions) {
+      const newRow = row + dr;
+      const newCol = col + dc;
+      if (
+        newRow >= 0 &&
+        newRow < grid.length &&
+        newCol >= 0 &&
+        newCol < grid[0].length
+      ) {
+        adjacent.push(grid[newRow][newCol]);
+      }
+    }
+
+    return adjacent;
   };
 
   const handleAnimationComplete = () => {
@@ -172,94 +329,220 @@ const ZipGame = () => {
     if (gameHistory.length > 0) {
       const previousState = gameHistory[gameHistory.length - 1];
       setGameState(previousState);
-      setGameHistory(prev => prev.slice(0, -1));
+      setGameHistory((prev) => prev.slice(0, -1));
     }
   };
 
   const handleHint = () => {
-    // Simple hint: highlight next possible move
-    setGameState(prev => ({
-      ...prev,
-      hintsUsed: prev.hintsUsed + 1
-    }));
-    toast.info("Hint: Try connecting the numbers in order!");
+    // Find the next numbered cell that needs to be connected
+    const numberedCells = gameState.grid
+      .flat()
+      .filter((cell) => cell.isNumbered)
+      .sort((a, b) => (a.number || 0) - (b.number || 0));
+
+    let nextNumberToConnect = 1;
+    for (let i = 0; i < numberedCells.length - 1; i++) {
+      const current = numberedCells[i];
+      const next = numberedCells[i + 1];
+      if (!findPathBetweenCells(gameState.grid, current, next)) {
+        nextNumberToConnect = next.number || 1;
+        break;
+      }
+    }
+
+    // Find the solution path segment for this number
+    const solutionIndex = gameState.solutionPath.findIndex(([row, col]) => {
+      const cell = gameState.grid[row][col];
+      return cell.isNumbered && cell.number === nextNumberToConnect;
+    });
+
+    if (solutionIndex >= 0) {
+      // Highlight the next few steps in the solution path
+      const hintLength = 3;
+      const hintPath = gameState.solutionPath.slice(
+        Math.max(0, solutionIndex - 1),
+        solutionIndex + hintLength
+      );
+
+      const newGrid = gameState.grid.map((row) =>
+        row.map((cell) => ({
+          ...cell,
+          isHighlighted: hintPath.some(
+            ([r, c]) => r === cell.row && c === cell.col
+          ),
+        }))
+      );
+
+      setGameState((prev) => ({
+        ...prev,
+        grid: newGrid,
+        hintsUsed: prev.hintsUsed + 1,
+      }));
+
+      // Clear hint after a delay
+      setTimeout(() => {
+        setGameState((prev) => ({
+          ...prev,
+          grid: prev.grid.map((row) =>
+            row.map((cell) => ({ ...cell, isHighlighted: false }))
+          ),
+        }));
+      }, 2000);
+
+      toast.info(`Connect to number ${nextNumberToConnect}!`);
+    }
   };
 
   const handleClear = () => {
-    const level = generateDailyLevel();
-    initializeGrid(level);
-    toast.info("Grid cleared! Starting fresh.");
+    try {
+      const level = generateRandomLevel(difficulty);
+      setGridSize(level.gridSize);
+      initializeGrid(level);
+      toast.info("Grid cleared! Starting fresh.");
+    } catch (error) {
+      console.error("Failed to generate level:", error);
+      const level = generateRandomLevel("easy");
+      setGridSize(level.gridSize);
+      initializeGrid(level);
+      toast.info("Grid cleared! Starting fresh.");
+    }
   };
 
   const handleNewGame = () => {
-    const level = generateDailyLevel();
-    initializeGrid(level);
-    toast.success("New game started!");
+    try {
+      const level = generateRandomLevel(difficulty);
+      setGridSize(level.gridSize);
+      initializeGrid(level);
+      setTimeElapsed(0);
+      setIsTimerRunning(false);
+      toast.success("New game started!");
+    } catch (error) {
+      console.error("Failed to generate level:", error);
+      toast.error("Failed to start a new game. Please try again.");
+      // Fallback to easy level if random generation fails
+      const level = generateRandomLevel("easy");
+      setGridSize(level.gridSize);
+      setDifficulty("easy");
+      initializeGrid(level);
+      setTimeElapsed(0);
+      setIsTimerRunning(false);
+      toast.success("New game started!");
+    }
+  };
+
+  const animateSolution = () => {
+    const { solutionPath } = gameState;
+    let index = 0;
+
+    const revealStep = () => {
+      if (index < solutionPath.length) {
+        const [row, col] = solutionPath[index];
+        setGameState((prev) => {
+          const newGrid = prev.grid.map((gridRow, r) =>
+            gridRow.map((cell, c) =>
+              r === row && c === col && !cell.isPath
+                ? { ...cell, isFilled: true, isPath: true }
+                : cell
+            )
+          );
+          return { ...prev, grid: newGrid };
+        });
+        index++;
+        setTimeout(revealStep, 200); // Delay for animation
+      } else {
+        setGameState((prev) => ({ ...prev, isComplete: true }));
+        setShowCompletionAnimation(true);
+      }
+    };
+
+    revealStep();
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-4">
-      <div className="max-w-md mx-auto space-y-6">
-        {/* Header */}
-        <div className="text-center space-y-2">
-          <h1 className="text-3xl font-bold text-gray-900">Zip</h1>
-          <div className="text-sm text-gray-600 flex items-center justify-center gap-4">
-            <span>Moves: {gameState.moves}</span>
-            <span>•</span>
-            <span>Hints: {gameState.hintsUsed}</span>
+    <ErrorBoundary>
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-4">
+        <div className="max-w-md mx-auto space-y-6">
+          {/* Header */}
+          <div className="text-center space-y-4">
+            <h1 className="text-2xl font-bold text-gray-900">
+              {difficulty.charAt(0).toUpperCase() + difficulty.slice(1)} Level (
+              {gridSize}×{gridSize})
+            </h1>
+            <div className="flex items-center justify-center gap-4 text-gray-600">
+              <div className="flex items-center gap-1">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-5 w-5"
+                  viewBox="0 0 20 20"
+                  fill="currentColor">
+                  <path
+                    fillRule="evenodd"
+                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                <span className="font-medium">{formatTime(timeElapsed)}</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="font-medium">Moves: {gameState.moves}</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="font-medium">
+                  Hints: {gameState.hintsUsed}
+                </span>
+              </div>
+            </div>
           </div>
+
+          {/* Game Grid */}
+          <Card className="p-6 bg-white shadow-lg">
+            <GameGrid
+              grid={gameState.grid}
+              currentPath={gameState.currentPath}
+              isDrawing={gameState.isDrawing}
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseLeave}
+              isComplete={gameState.isComplete}
+              showCompletionAnimation={showCompletionAnimation}
+            />
+          </Card>
+
+          {/* Game Controls */}
+          <GameControls
+            onUndo={handleUndo}
+            onHint={handleHint}
+            onClear={handleClear}
+            canUndo={gameHistory.length > 0}
+            isComplete={gameState.isComplete}
+          />
+
+          {/* Instructions */}
+          <GameInstructions />
+
+          {/* New Game Button */}
+          <Button
+            onClick={handleNewGame}
+            className="w-full bg-gray-800 hover:bg-gray-900 text-white py-3 rounded-xl font-medium">
+            New Game
+          </Button>
+
+          {/* Solve Button */}
+          <Button
+            onClick={animateSolution}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-medium">
+            Solve
+          </Button>
         </div>
 
-        {/* Game Grid */}
-        <Card className="p-6 bg-white shadow-lg">
-          <GameGrid
-            grid={gameState.grid}
-            currentPath={gameState.currentPath}
-            isDrawing={gameState.isDrawing}
-            onCellClick={handleCellClick}
-            onCellHover={handleCellHover}
-            onPathFinalize={finalizePath}
-            isComplete={gameState.isComplete}
-            showCompletionAnimation={showCompletionAnimation}
-          />
-        </Card>
-
-        {/* Game Controls */}
-        <GameControls
-          onUndo={handleUndo}
-          onHint={handleHint}
-          onClear={handleClear}
-          canUndo={gameHistory.length > 0}
+        {/* Completion Animation */}
+        <CompletionAnimation
           isComplete={gameState.isComplete}
+          onAnimationComplete={handleAnimationComplete}
         />
-
-        {/* Instructions */}
-        <GameInstructions />
-
-        {/* New Game Button */}
-        <Button 
-          onClick={handleNewGame}
-          className="w-full bg-gray-800 hover:bg-gray-900 text-white py-3 rounded-xl font-medium"
-        >
-          New Game
-        </Button>
-
-        {/* Results Button (when complete) */}
-        {gameState.isComplete && (
-          <Button 
-            className="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl font-medium"
-          >
-            See Results
-          </Button>
-        )}
       </div>
-
-      {/* Completion Animation */}
-      <CompletionAnimation 
-        isComplete={gameState.isComplete}
-        onAnimationComplete={handleAnimationComplete}
-      />
-    </div>
+    </ErrorBoundary>
   );
 };
 
