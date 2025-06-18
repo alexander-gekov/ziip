@@ -634,7 +634,7 @@ const ZipGame = () => {
 
   return (
     <ErrorBoundary>
-      <div className="min-h-screen w-[90%] mx-auto bg-gradient-to-br from-gray-50 to-gray-100 p-2 lg:p-4">
+      <div className="min-h-screen w-full mx-auto bg-gradient-to-br from-gray-50 to-gray-100 p-2 lg:p-4">
         <div className="max-w-sm lg:max-w-md mx-auto space-y-4 w-full">
           {/* Header */}
           <div className="text-center space-y-4">

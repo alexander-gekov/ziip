@@ -1,6 +1,6 @@
 const Footer = () => {
   return (
-    <footer className="p-2 text-center text-sm text-gray-500 max-w-4xl mx-auto backdrop-blur-sm">
+    <footer className="p-2 text-center text-sm text-gray-500 bg-gray-100 mx-auto backdrop-blur-sm">
       with <span className="text-red-500">❤</span> by{" "}
       <a
         href="https://me.alexandergekov.com"
