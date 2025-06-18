@@ -212,8 +212,10 @@ export const GameGrid: React.FC<GameGridProps> = ({
     return cn(
       "rounded-full text-white z-30 relative",
       "flex items-center justify-center text-lg font-bold",
-      "border-2 border-white shadow-lg transition-all duration-300",
-      "select-none pointer-events-none"
+      "border-2 border-white shadow-lg",
+      "select-none pointer-events-none",
+      "transition-all duration-300",
+      isInCurrentPath && "animate-[pop_0.5s_ease-out]"
     );
   };
 
@@ -226,6 +228,24 @@ export const GameGrid: React.FC<GameGridProps> = ({
 
   return (
     <div className="flex justify-center touch-none" ref={containerRef}>
+      <style>
+        {`
+          @keyframes pop {
+            0% { 
+              transform: scale(1);
+              box-shadow: 0 0 5px rgba(255,255,255,0.2);
+            }
+            30% { 
+              transform: scale(1.4);
+              box-shadow: 0 0 20px rgba(255,255,255,0.6);
+            }
+            100% { 
+              transform: scale(1);
+              box-shadow: 0 0 5px rgba(255,255,255,0.2);
+            }
+          }
+        `}
+      </style>
       <div className="relative">
         {/* Grid Container */}
         <div
@@ -317,11 +337,11 @@ export const GameGrid: React.FC<GameGridProps> = ({
               opacity={1}
               pathLength="1"
               className={cn(
-                "transition-[d,stroke-dashoffset] duration-300 ease-spring",
+                "transition-[d,stroke-dashoffset] duration-500 ease-in-out",
                 showCompletionAnimation && "animate-pulse"
               )}
               style={{
-                transition: "d 0.3s cubic-bezier(0.64, 0.57, 0.67, 1.53)",
+                transition: "d 0.5s cubic-bezier(0.4, 0, 0.2, 1)",
                 strokeDasharray: pathLength,
                 strokeDashoffset: isDrawing ? 0 : pathLength * 0.15,
               }}
@@ -339,11 +359,11 @@ export const GameGrid: React.FC<GameGridProps> = ({
               opacity={1}
               pathLength="1"
               className={cn(
-                "transition-[d,stroke-dashoffset] duration-300 ease-spring",
+                "transition-[d,stroke-dashoffset] duration-500 ease-in-out",
                 showCompletionAnimation && "animate-pulse"
               )}
               style={{
-                transition: "d 0.3s cubic-bezier(0.64, 0.57, 0.67, 1.53)",
+                transition: "d 0.5s cubic-bezier(0.4, 0, 0.2, 1)",
                 strokeDasharray: pathLength,
                 strokeDashoffset: isDrawing ? 0 : pathLength * 0.15,
               }}

@@ -200,14 +200,26 @@ const ZipGame = () => {
       return;
     }
 
-    // Check if clicking on the last cell of the current path
-    if (
-      gameState.currentPath.length > 0 &&
-      cellId === gameState.currentPath[gameState.currentPath.length - 1]
-    ) {
+    // Check if clicking on any cell in the current path
+    if (gameState.currentPath.includes(cellId)) {
+      const cellIndex = gameState.currentPath.indexOf(cellId);
+      const newPath = gameState.currentPath.slice(0, cellIndex + 1);
+
+      // Update the grid to clear highlighting from removed cells
+      const newGrid = gameState.grid.map((row) =>
+        row.map((cell) => ({
+          ...cell,
+          isFilled: newPath.includes(cell.id),
+          isPath: newPath.includes(cell.id),
+          isHighlighted: false,
+        }))
+      );
+
       saveGameState();
       setGameState((prev) => ({
         ...prev,
+        grid: newGrid,
+        currentPath: newPath,
         isDrawing: true,
         moves: prev.moves + 1,
       }));
@@ -236,19 +248,51 @@ const ZipGame = () => {
   const handleMouseMove = (cellId: string) => {
     if (!gameState.isDrawing) return;
 
-    // Don't allow moving to cells that are already in the path (except the last cell)
-    if (
-      gameState.currentPath.includes(cellId) &&
-      cellId !== gameState.currentPath[gameState.currentPath.length - 1]
-    )
-      return;
-
     const lastCell = gameState.currentPath[gameState.currentPath.length - 1];
+
+    // Check if we're moving to an adjacent cell
     if (isAdjacent(cellId, lastCell)) {
-      setGameState((prev) => ({
-        ...prev,
-        currentPath: [...prev.currentPath, cellId],
-      }));
+      // Case 1: Moving to a cell that's already in our path (backtracking)
+      if (gameState.currentPath.includes(cellId)) {
+        const cellIndex = gameState.currentPath.indexOf(cellId);
+        // Only allow backtracking if we're moving to a cell that's already connected
+        // and it's adjacent to our current position
+        if (cellIndex >= 0) {
+          const newPath = gameState.currentPath.slice(0, cellIndex + 1);
+
+          // Update the grid to clear highlighting from removed cells
+          const newGrid = gameState.grid.map((row) =>
+            row.map((cell) => ({
+              ...cell,
+              isFilled: newPath.includes(cell.id),
+              isPath: newPath.includes(cell.id),
+            }))
+          );
+
+          setGameState((prev) => ({
+            ...prev,
+            grid: newGrid,
+            currentPath: newPath,
+          }));
+        }
+      }
+      // Case 2: Moving to a new cell (extending the path)
+      else {
+        const newPath = [...gameState.currentPath, cellId];
+        const newGrid = gameState.grid.map((row) =>
+          row.map((cell) => ({
+            ...cell,
+            isFilled: newPath.includes(cell.id),
+            isPath: newPath.includes(cell.id),
+          }))
+        );
+
+        setGameState((prev) => ({
+          ...prev,
+          grid: newGrid,
+          currentPath: newPath,
+        }));
+      }
     }
   };
 
