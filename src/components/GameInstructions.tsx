@@ -2,8 +2,15 @@ import React, { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ChevronDown, ChevronUp } from "lucide-react";
+import { type GameColors } from "@/hooks/useGameColors";
 
-export const GameInstructions: React.FC = () => {
+interface GameInstructionsProps {
+  colors: GameColors;
+}
+
+export const GameInstructions: React.FC<GameInstructionsProps> = ({
+  colors,
+}) => {
   const [isExpanded, setIsExpanded] = useState(true);
 
   return (
@@ -19,16 +26,25 @@ export const GameInstructions: React.FC = () => {
       {isExpanded && (
         <div className="px-4 pb-4 space-y-4 border-t border-gray-100">
           <div className="flex items-start gap-3 mt-3">
-            <div className="flex gap-1 mt-3">
-              <div className="w-6 h-6 bg-green-500 rounded text-white text-xs flex items-center justify-center font-bold">
-                1
+            <div className="flex items-center gap-2">
+              <div className="flex gap-1">
+                <div
+                  className="w-6 h-6 rounded text-white text-xs flex items-center justify-center font-bold"
+                  style={{ backgroundColor: colors.start }}>
+                  1
+                </div>
+                <div
+                  className="w-6 h-6 rounded text-white text-xs flex items-center justify-center font-bold"
+                  style={{ backgroundColor: colors.start }}>
+                  2
+                </div>
+                <div
+                  className="w-6 h-6 rounded text-white text-xs flex items-center justify-center font-bold"
+                  style={{ backgroundColor: colors.start }}>
+                  3
+                </div>
               </div>
-              <div className="w-6 h-6 bg-green-500 rounded text-white text-xs flex items-center justify-center font-bold">
-                2
-              </div>
-              <div className="w-6 h-6 bg-green-500 rounded text-white text-xs flex items-center justify-center font-bold">
-                3
-              </div>
+              <span>Numbers to connect</span>
             </div>
             <div>
               <h3 className="font-medium text-gray-900">
@@ -41,8 +57,12 @@ export const GameInstructions: React.FC = () => {
           </div>
 
           <div className="flex items-start gap-3">
-            <div className="w-8 h-8 bg-green-300 rounded mt-1 flex items-center justify-center">
-              <div className="w-4 h-4 bg-green-500 rounded"></div>
+            <div
+              className="w-8 h-8  rounded mt-1 flex items-center justify-center"
+              style={{ backgroundColor: colors.start }}>
+              <div
+                className="w-4 h-4 rounded"
+                style={{ backgroundColor: colors.end }}></div>
             </div>
             <div>
               <h3 className="font-medium text-gray-900">Fill every cell</h3>

@@ -12,6 +12,7 @@ import {
   generateRandomLevel,
 } from "../utils/levelGenerator";
 import { toast } from "sonner";
+import { generateGameColors, type GameColors } from "@/hooks/useGameColors";
 
 export interface Cell {
   id: string;
@@ -80,6 +81,7 @@ const ZipGame = () => {
   const [showCompletionAnimation, setShowCompletionAnimation] = useState(false);
   const [timeElapsed, setTimeElapsed] = useState(0);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
+  const [gameColors, setGameColors] = useState<GameColors>(generateGameColors);
 
   // Initialize game with daily level
   useEffect(() => {
@@ -145,6 +147,7 @@ const ZipGame = () => {
       solutionPath: level.solutionPath,
     });
     setGameHistory([]);
+    setGameColors(generateGameColors());
   };
 
   const saveGameState = useCallback(() => {
@@ -678,6 +681,7 @@ const ZipGame = () => {
               onMouseLeave={handleMouseLeave}
               isComplete={gameState.isComplete}
               showCompletionAnimation={showCompletionAnimation}
+              colors={gameColors}
             />
           </div>
 
@@ -691,7 +695,7 @@ const ZipGame = () => {
           />
 
           {/* Instructions */}
-          <GameInstructions />
+          <GameInstructions colors={gameColors} />
 
           {/* New Game Button */}
           <Button

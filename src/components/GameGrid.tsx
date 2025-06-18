@@ -1,6 +1,41 @@
 import React, { useRef, useEffect, useState } from "react";
 import { Cell } from "./ZipGame";
 import { cn } from "@/lib/utils";
+import { type GameColors } from "@/hooks/useGameColors";
+
+const hslToRgb = (h: number, s: number, l: number) => {
+  s /= 100;
+  l /= 100;
+  const k = (n: number) => (n + h / 30) % 12;
+  const a = s * Math.min(l, 1 - l);
+  const f = (n: number) =>
+    l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+  return [255 * f(0), 255 * f(8), 255 * f(4)].map(Math.round);
+};
+
+const generateHarmonousColors = () => {
+  const baseHue = Math.floor(Math.random() * 360);
+  const saturation = Math.floor(Math.random() * 10 + 85);
+  const baseLightness = Math.floor(Math.random() * 10 + 45);
+
+  const startRgb = hslToRgb(baseHue, saturation, baseLightness);
+  const endRgb = hslToRgb(
+    (baseHue + 30) % 360,
+    saturation,
+    Math.max(30, baseLightness - 10)
+  );
+
+  return {
+    start: `hsl(${baseHue}, ${saturation}%, ${baseLightness}%)`,
+    end: `hsl(${(baseHue + 30) % 360}, ${saturation}%, ${Math.max(
+      30,
+      baseLightness - 10
+    )}%)`,
+    filledBg: `rgba(${startRgb[0]}, ${startRgb[1]}, ${startRgb[2]}, 0.2)`,
+    highlightBg: `rgba(${startRgb[0]}, ${startRgb[1]}, ${startRgb[2]}, 0.4)`,
+    activeBg: `rgba(${endRgb[0]}, ${endRgb[1]}, ${endRgb[2]}, 0.3)`,
+  };
+};
 
 interface GameGridProps {
   grid: Cell[][];
@@ -12,6 +47,7 @@ interface GameGridProps {
   onMouseLeave: () => void;
   isComplete: boolean;
   showCompletionAnimation: boolean;
+  colors: GameColors;
 }
 
 export const GameGrid: React.FC<GameGridProps> = ({
@@ -24,6 +60,7 @@ export const GameGrid: React.FC<GameGridProps> = ({
   onMouseLeave,
   isComplete,
   showCompletionAnimation,
+  colors,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
@@ -114,6 +151,15 @@ export const GameGrid: React.FC<GameGridProps> = ({
     let pathData = `M ${points[0].x} ${points[0].y}`;
     let totalLength = 0;
 
+    // Find the last correctly connected number
+    const lastCompletedIndex = currentPath.reduce((acc, cellId, index) => {
+      const cell = grid.flat().find((c) => c.id === cellId);
+      if (cell?.isNumbered && cell.number === index + 1) {
+        return index;
+      }
+      return acc;
+    }, -1);
+
     for (let i = 1; i < points.length; i++) {
       const current = points[i];
       const prev = points[i - 1];
@@ -166,18 +212,6 @@ export const GameGrid: React.FC<GameGridProps> = ({
       }
     }
 
-    const startPoint = points[0];
-    const endPoint = points[points.length - 1];
-    const gradientElement = document.getElementById(
-      "pathGradient"
-    ) as unknown as SVGLinearGradientElement;
-    if (gradientElement) {
-      gradientElement.setAttribute("x1", startPoint.x.toString());
-      gradientElement.setAttribute("y1", startPoint.y.toString());
-      gradientElement.setAttribute("x2", endPoint.x.toString());
-      gradientElement.setAttribute("y2", endPoint.y.toString());
-    }
-
     return pathData;
   };
 
@@ -192,9 +226,9 @@ export const GameGrid: React.FC<GameGridProps> = ({
       "flex items-center justify-center border border-gray-300",
       {
         "bg-white": !cell.isFilled && !cell.isHighlighted,
-        "bg-orange-100": cell.isFilled && !isInCurrentPath,
-        "bg-orange-300": isInCurrentPath,
-        "bg-blue-100": !cell.isNumbered && cell.isHighlighted,
+        [colors.filledBg]: cell.isFilled && !isInCurrentPath,
+        [colors.activeBg]: isInCurrentPath,
+        [colors.highlightBg]: !cell.isNumbered && cell.isHighlighted,
         "shadow-inner": cell.isFilled,
       }
     );
@@ -207,11 +241,7 @@ export const GameGrid: React.FC<GameGridProps> = ({
       "rounded-full text-white z-30 relative",
       "flex items-center justify-center text-lg font-bold",
       "border-2 border-white shadow-lg transition-all duration-300",
-      "select-none pointer-events-none",
-      {
-        "bg-gray-800": !isInCurrentPath,
-        "bg-orange-600 scale-110": isInCurrentPath,
-      }
+      "select-none pointer-events-none"
     );
   };
 
@@ -260,6 +290,9 @@ export const GameGrid: React.FC<GameGridProps> = ({
                     width: `${Math.min(40, cellSize * 0.6)}px`,
                     height: `${Math.min(40, cellSize * 0.6)}px`,
                     fontSize: `${Math.min(20, cellSize * 0.3)}px`,
+                    backgroundColor: currentPath.includes(cell.id)
+                      ? colors.end
+                      : colors.start,
                   }}>
                   {cell.number}
                 </div>
@@ -284,16 +317,9 @@ export const GameGrid: React.FC<GameGridProps> = ({
                 </feMerge>
               </filter>
 
-              <linearGradient
-                id="pathGradient"
-                gradientUnits="userSpaceOnUse"
-                x1="0"
-                y1="0"
-                x2="1"
-                y2="0"
-                gradientTransform="rotate(0)">
-                <stop offset="0%" stopColor="#ea580c" />
-                <stop offset="100%" stopColor="#f93316" />
+              <linearGradient id="pathGradient" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stopColor={colors.start} />
+                <stop offset="100%" stopColor={colors.end} />
               </linearGradient>
             </defs>
 
