@@ -207,7 +207,6 @@ const ZipGame = () => {
     if (gameState.currentPath.length < 2) {
       setGameState((prev) => ({
         ...prev,
-        currentPath: [],
         isDrawing: false,
       }));
       return;
@@ -229,7 +228,6 @@ const ZipGame = () => {
     setGameState((prev) => ({
       ...prev,
       grid: newGrid,
-      currentPath: [],
       isDrawing: false,
       isComplete,
     }));
@@ -432,30 +430,41 @@ const ZipGame = () => {
 
   const animateSolution = () => {
     const { solutionPath } = gameState;
-    let index = 0;
+    let index = 1;
 
     const revealStep = () => {
-      if (index < solutionPath.length) {
-        const [row, col] = solutionPath[index];
+      if (index <= solutionPath.length) {
+        const currentPath = solutionPath
+          .slice(0, index)
+          .map(([row, col]) => `${row}-${col}`);
         setGameState((prev) => {
-          const newGrid = prev.grid.map((gridRow, r) =>
-            gridRow.map((cell, c) =>
-              r === row && c === col && !cell.isPath
-                ? { ...cell, isFilled: true, isPath: true }
-                : cell
-            )
+          const newGrid = prev.grid.map((gridRow) =>
+            gridRow.map((cell) => ({
+              ...cell,
+              isFilled: currentPath.includes(cell.id),
+              isPath: currentPath.includes(cell.id),
+            }))
           );
-          return { ...prev, grid: newGrid };
+          return {
+            ...prev,
+            grid: newGrid,
+            currentPath: currentPath,
+          };
         });
         index++;
-        setTimeout(revealStep, 200); // Delay for animation
+        setTimeout(revealStep, 100); // Faster animation
       } else {
         setGameState((prev) => ({ ...prev, isComplete: true }));
         setShowCompletionAnimation(true);
       }
     };
 
-    revealStep();
+    // Start with the first cell
+    setGameState((prev) => ({
+      ...prev,
+      currentPath: [`${solutionPath[0][0]}-${solutionPath[0][1]}`],
+    }));
+    setTimeout(revealStep, 100);
   };
 
   return (

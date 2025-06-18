@@ -47,7 +47,8 @@ export const GameGrid: React.FC<GameGridProps> = ({
       const next = i < points.length - 1 ? points[i + 1] : null;
 
       if (next && i > 0) {
-        // Calculate directions
+        const cornerRadius = Math.min(25, cellSize * 0.4);
+
         const prevDir = {
           x: current.x - prev.x,
           y: current.y - prev.y,
@@ -57,42 +58,28 @@ export const GameGrid: React.FC<GameGridProps> = ({
           y: next.y - current.y,
         };
 
-        // Check if we're making a turn (directions are different)
-        const isTurning = prevDir.x !== nextDir.x || prevDir.y !== nextDir.y;
+        const approachDistance = Math.min(
+          cornerRadius,
+          Math.sqrt(prevDir.x * prevDir.x + prevDir.y * prevDir.y) / 2
+        );
+        const departDistance = Math.min(
+          cornerRadius,
+          Math.sqrt(nextDir.x * nextDir.x + nextDir.y * nextDir.y) / 2
+        );
 
-        if (isTurning) {
-          // Create smooth rounded corner
-          const cornerRadius = Math.min(25, cellSize * 0.4);
+        const approachPoint = {
+          x: current.x - Math.sign(prevDir.x) * approachDistance,
+          y: current.y - Math.sign(prevDir.y) * approachDistance,
+        };
 
-          // Calculate approach and departure points
-          const approachDistance = Math.min(
-            cornerRadius,
-            Math.sqrt(prevDir.x * prevDir.x + prevDir.y * prevDir.y) / 2
-          );
-          const departDistance = Math.min(
-            cornerRadius,
-            Math.sqrt(nextDir.x * nextDir.x + nextDir.y * nextDir.y) / 2
-          );
+        const departPoint = {
+          x: current.x + Math.sign(nextDir.x) * departDistance,
+          y: current.y + Math.sign(nextDir.y) * departDistance,
+        };
 
-          const approachPoint = {
-            x: current.x - Math.sign(prevDir.x) * approachDistance,
-            y: current.y - Math.sign(prevDir.y) * approachDistance,
-          };
-
-          const departPoint = {
-            x: current.x + Math.sign(nextDir.x) * departDistance,
-            y: current.y + Math.sign(nextDir.y) * departDistance,
-          };
-
-          // Draw line to approach point, then smooth curve to depart point
-          pathData += ` L ${approachPoint.x} ${approachPoint.y}`;
-          pathData += ` Q ${current.x} ${current.y} ${departPoint.x} ${departPoint.y}`;
-        } else {
-          // Straight line continuation
-          pathData += ` L ${current.x} ${current.y}`;
-        }
+        pathData += ` L ${approachPoint.x} ${approachPoint.y}`;
+        pathData += ` Q ${current.x} ${current.y} ${departPoint.x} ${departPoint.y}`;
       } else {
-        // First segment or last point - just draw straight line
         pathData += ` L ${current.x} ${current.y}`;
       }
     }
@@ -203,12 +190,18 @@ export const GameGrid: React.FC<GameGridProps> = ({
             {/* Shadow/outline path */}
             <path
               d={getPathData()}
-              stroke="#000000"
-              strokeWidth="12"
+              stroke={
+                showCompletionAnimation ? "url(#pathGradient)" : "#ea580c"
+              }
+              strokeWidth={cellSize * 0.7}
               fill="none"
               strokeLinecap="round"
               strokeLinejoin="round"
-              opacity="0.1"
+              opacity={1}
+              className={cn(
+                "transition-all duration-300",
+                showCompletionAnimation && "animate-pulse"
+              )}
             />
 
             {/* Main path with gradient and glow */}
@@ -217,34 +210,17 @@ export const GameGrid: React.FC<GameGridProps> = ({
               stroke={
                 showCompletionAnimation ? "url(#pathGradient)" : "#ea580c"
               }
-              strokeWidth="8"
+              strokeWidth={cellSize * 0.7}
               fill="none"
               strokeLinecap="round"
               strokeLinejoin="round"
               filter="url(#glow)"
+              opacity={1}
               className={cn(
                 "transition-all duration-300",
                 showCompletionAnimation && "animate-pulse"
               )}
             />
-
-            {/* Connection dots at each cell */}
-            {currentPath.map((cellId, index) => {
-              const [row, col] = cellId.split("-").map(Number);
-              const cell = grid[row][col];
-              if (cell.isNumbered) return null; // Skip numbered cells
-
-              return (
-                <circle
-                  key={`dot-${cellId}`}
-                  cx={col * cellSize + cellSize / 2}
-                  cy={row * cellSize + cellSize / 2}
-                  r="4"
-                  fill="#ea580c"
-                  className="transition-all duration-300"
-                />
-              );
-            })}
           </svg>
         )}
       </div>
