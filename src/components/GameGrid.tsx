@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useRef, useEffect, useState } from "react";
 import { Cell } from "./ZipGame";
 import { cn } from "@/lib/utils";
 
@@ -25,8 +25,23 @@ export const GameGrid: React.FC<GameGridProps> = ({
   isComplete,
   showCompletionAnimation,
 }) => {
-  const cellSize = 60;
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [cellSize, setCellSize] = useState(60);
   const gridSize = grid.length;
+
+  useEffect(() => {
+    const updateCellSize = () => {
+      if (containerRef.current) {
+        const containerWidth = containerRef.current.clientWidth;
+        const newCellSize = Math.floor(containerWidth / gridSize);
+        setCellSize(newCellSize);
+      }
+    };
+
+    updateCellSize();
+    window.addEventListener("resize", updateCellSize);
+    return () => window.removeEventListener("resize", updateCellSize);
+  }, [gridSize]);
 
   const getPathData = () => {
     if (currentPath.length < 2) return "";
@@ -40,6 +55,7 @@ export const GameGrid: React.FC<GameGridProps> = ({
     });
 
     let pathData = `M ${points[0].x} ${points[0].y}`;
+    let totalLength = 0;
 
     for (let i = 1; i < points.length; i++) {
       const current = points[i];
@@ -79,9 +95,30 @@ export const GameGrid: React.FC<GameGridProps> = ({
 
         pathData += ` L ${approachPoint.x} ${approachPoint.y}`;
         pathData += ` Q ${current.x} ${current.y} ${departPoint.x} ${departPoint.y}`;
+
+        totalLength += Math.sqrt(
+          Math.pow(approachPoint.x - prev.x, 2) +
+            Math.pow(approachPoint.y - prev.y, 2)
+        );
+        totalLength += (Math.PI / 2) * cornerRadius;
       } else {
         pathData += ` L ${current.x} ${current.y}`;
+        totalLength += Math.sqrt(
+          Math.pow(current.x - prev.x, 2) + Math.pow(current.y - prev.y, 2)
+        );
       }
+    }
+
+    const startPoint = points[0];
+    const endPoint = points[points.length - 1];
+    const gradientElement = document.getElementById(
+      "pathGradient"
+    ) as unknown as SVGLinearGradientElement;
+    if (gradientElement) {
+      gradientElement.setAttribute("x1", startPoint.x.toString());
+      gradientElement.setAttribute("y1", startPoint.y.toString());
+      gradientElement.setAttribute("x2", endPoint.x.toString());
+      gradientElement.setAttribute("y2", endPoint.y.toString());
     }
 
     return pathData;
@@ -96,7 +133,6 @@ export const GameGrid: React.FC<GameGridProps> = ({
     return cn(
       "aspect-square transition-all duration-300 cursor-pointer relative",
       "flex items-center justify-center border border-gray-300",
-      "hover:bg-gray-50",
       {
         "bg-white": !cell.isFilled && !cell.isHighlighted,
         "bg-orange-100": cell.isFilled && !isInCurrentPath,
@@ -109,8 +145,9 @@ export const GameGrid: React.FC<GameGridProps> = ({
 
   const getNumberedCellClasses = (cell: Cell) => {
     const isInCurrentPath = currentPath.includes(cell.id);
+    const size = Math.min(40, cellSize * 0.6);
     return cn(
-      "w-10 h-10 rounded-full text-white z-30 relative",
+      "rounded-full text-white z-30 relative",
       "flex items-center justify-center text-lg font-bold",
       "border-2 border-white shadow-lg transition-all duration-300",
       "select-none pointer-events-none",
@@ -122,7 +159,7 @@ export const GameGrid: React.FC<GameGridProps> = ({
   };
 
   return (
-    <div className="flex justify-center">
+    <div className="flex justify-center" ref={containerRef}>
       <div className="relative">
         {/* Grid Container */}
         <div
@@ -151,7 +188,13 @@ export const GameGrid: React.FC<GameGridProps> = ({
                 height: cellSize,
               }}>
               {cell.isNumbered && (
-                <div className={getNumberedCellClasses(cell)}>
+                <div
+                  className={getNumberedCellClasses(cell)}
+                  style={{
+                    width: `${Math.min(40, cellSize * 0.6)}px`,
+                    height: `${Math.min(40, cellSize * 0.6)}px`,
+                    fontSize: `${Math.min(20, cellSize * 0.3)}px`,
+                  }}>
                   {cell.number}
                 </div>
               )}
@@ -177,27 +220,27 @@ export const GameGrid: React.FC<GameGridProps> = ({
 
               <linearGradient
                 id="pathGradient"
-                x1="0%"
-                y1="0%"
-                x2="100%"
-                y2="0%">
+                gradientUnits="userSpaceOnUse"
+                x1="0"
+                y1="0"
+                x2="1"
+                y2="0"
+                gradientTransform="rotate(0)">
                 <stop offset="0%" stopColor="#ea580c" />
-                <stop offset="50%" stopColor="#f97316" />
-                <stop offset="100%" stopColor="#ea580c" />
+                <stop offset="100%" stopColor="#f93316" />
               </linearGradient>
             </defs>
 
             {/* Shadow/outline path */}
             <path
               d={getPathData()}
-              stroke={
-                showCompletionAnimation ? "url(#pathGradient)" : "#ea580c"
-              }
+              stroke="url(#pathGradient)"
               strokeWidth={cellSize * 0.7}
               fill="none"
               strokeLinecap="round"
               strokeLinejoin="round"
               opacity={1}
+              pathLength="1"
               className={cn(
                 "transition-all duration-300",
                 showCompletionAnimation && "animate-pulse"
@@ -207,15 +250,14 @@ export const GameGrid: React.FC<GameGridProps> = ({
             {/* Main path with gradient and glow */}
             <path
               d={getPathData()}
-              stroke={
-                showCompletionAnimation ? "url(#pathGradient)" : "#ea580c"
-              }
+              stroke="url(#pathGradient)"
               strokeWidth={cellSize * 0.7}
               fill="none"
               strokeLinecap="round"
               strokeLinejoin="round"
               filter="url(#glow)"
               opacity={1}
+              pathLength="1"
               className={cn(
                 "transition-all duration-300",
                 showCompletionAnimation && "animate-pulse"

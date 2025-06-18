@@ -155,10 +155,16 @@ const ZipGame = () => {
     const [row, col] = cellId.split("-").map(Number);
     const cell = gameState.grid[row][col];
 
-    if (cell.isNumbered) {
-      if (!isTimerRunning) {
-        setIsTimerRunning(true);
-      }
+    if (!isTimerRunning) {
+      setIsTimerRunning(true);
+    }
+
+    // If clicking on a numbered cell while not drawing, start a new path
+    if (
+      cell.isNumbered &&
+      !gameState.isDrawing &&
+      gameState.currentPath.length === 0
+    ) {
       saveGameState();
       setGameState((prev) => ({
         ...prev,
@@ -166,11 +172,73 @@ const ZipGame = () => {
         isDrawing: true,
         moves: prev.moves + 1,
       }));
+      return;
+    }
+
+    // If clicking on a numbered cell while drawing, check if it's the next number in sequence
+    if (cell.isNumbered && gameState.isDrawing) {
+      const lastCell = gameState.grid[row][col];
+      const currentNumber = lastCell.number || 0;
+      const firstCell = gameState.currentPath[0].split("-").map(Number);
+      const startCell = gameState.grid[firstCell[0]][firstCell[1]];
+      const startNumber = startCell.number || 0;
+
+      // Only allow connecting to the next number in sequence
+      if (currentNumber === startNumber + 1) {
+        saveGameState();
+        setGameState((prev) => ({
+          ...prev,
+          currentPath: [...prev.currentPath, cellId],
+          isDrawing: false,
+          moves: prev.moves + 1,
+        }));
+        finalizePath();
+      }
+      return;
+    }
+
+    // Check if clicking on the last cell of the current path
+    if (
+      gameState.currentPath.length > 0 &&
+      cellId === gameState.currentPath[gameState.currentPath.length - 1]
+    ) {
+      saveGameState();
+      setGameState((prev) => ({
+        ...prev,
+        isDrawing: true,
+        moves: prev.moves + 1,
+      }));
+      return;
+    }
+
+    // Check if we can continue from the last path
+    if (gameState.currentPath.length > 0) {
+      const lastCell = gameState.currentPath[gameState.currentPath.length - 1];
+      // Only allow continuing to cells that aren't already in the path
+      if (
+        isAdjacent(cellId, lastCell) &&
+        !gameState.currentPath.includes(cellId)
+      ) {
+        saveGameState();
+        setGameState((prev) => ({
+          ...prev,
+          currentPath: [...prev.currentPath, cellId],
+          isDrawing: true,
+          moves: prev.moves + 1,
+        }));
+      }
     }
   };
 
   const handleMouseMove = (cellId: string) => {
-    if (!gameState.isDrawing || gameState.currentPath.includes(cellId)) return;
+    if (!gameState.isDrawing) return;
+
+    // Don't allow moving to cells that are already in the path (except the last cell)
+    if (
+      gameState.currentPath.includes(cellId) &&
+      cellId !== gameState.currentPath[gameState.currentPath.length - 1]
+    )
+      return;
 
     const lastCell = gameState.currentPath[gameState.currentPath.length - 1];
     if (isAdjacent(cellId, lastCell)) {
@@ -392,28 +460,51 @@ const ZipGame = () => {
   };
 
   const handleClear = () => {
-    try {
-      const level = generateRandomLevel(difficulty);
-      setGridSize(level.gridSize);
-      initializeGrid(level);
-      toast.info("Grid cleared! Starting fresh.");
-    } catch (error) {
-      console.error("Failed to generate level:", error);
-      const level = generateRandomLevel("easy");
-      setGridSize(level.gridSize);
-      initializeGrid(level);
-      toast.info("Grid cleared! Starting fresh.");
-    }
+    // Clear all drawn lines while keeping the same level
+    const clearedGrid = gameState.grid.map((row) =>
+      row.map((cell) => ({
+        ...cell,
+        isFilled: false,
+        isPath: false,
+        isHighlighted: false,
+      }))
+    );
+
+    setGameState((prev) => ({
+      ...prev,
+      grid: clearedGrid,
+      currentPath: [],
+      isDrawing: false,
+      moves: 0,
+      hintsUsed: 0,
+    }));
+
+    setTimeElapsed(0);
+    setIsTimerRunning(false);
+    setGameHistory([]);
+    toast.info("Grid cleared! Try again.");
+  };
+
+  const getRandomDifficulty = (): "easy" | "medium" | "hard" => {
+    const difficulties: ("easy" | "medium" | "hard")[] = [
+      "easy",
+      "medium",
+      "hard",
+    ];
+    const randomIndex = Math.floor(Math.random() * difficulties.length);
+    return difficulties[randomIndex];
   };
 
   const handleNewGame = () => {
     try {
-      const level = generateRandomLevel(difficulty);
+      const newDifficulty = getRandomDifficulty();
+      setDifficulty(newDifficulty);
+      const level = generateRandomLevel(newDifficulty);
       setGridSize(level.gridSize);
       initializeGrid(level);
       setTimeElapsed(0);
       setIsTimerRunning(false);
-      toast.success("New game started!");
+      toast.success(`New ${newDifficulty} game started!`);
     } catch (error) {
       console.error("Failed to generate level:", error);
       toast.error("Failed to start a new game. Please try again.");
@@ -504,18 +595,20 @@ const ZipGame = () => {
           </div>
 
           {/* Game Grid */}
-          <Card className="p-6 bg-white shadow-lg">
-            <GameGrid
-              grid={gameState.grid}
-              currentPath={gameState.currentPath}
-              isDrawing={gameState.isDrawing}
-              onMouseDown={handleMouseDown}
-              onMouseMove={handleMouseMove}
-              onMouseUp={handleMouseUp}
-              onMouseLeave={handleMouseLeave}
-              isComplete={gameState.isComplete}
-              showCompletionAnimation={showCompletionAnimation}
-            />
+          <Card className="p-4 bg-white shadow-lg overflow-hidden">
+            <div className="w-full aspect-square">
+              <GameGrid
+                grid={gameState.grid}
+                currentPath={gameState.currentPath}
+                isDrawing={gameState.isDrawing}
+                onMouseDown={handleMouseDown}
+                onMouseMove={handleMouseMove}
+                onMouseUp={handleMouseUp}
+                onMouseLeave={handleMouseLeave}
+                isComplete={gameState.isComplete}
+                showCompletionAnimation={showCompletionAnimation}
+              />
+            </div>
           </Card>
 
           {/* Game Controls */}

@@ -21,13 +21,13 @@ const DIFFICULTY_CONFIGS = {
   },
   medium: {
     gridSize: 8,
-    dotCount: 5,
+    dotCount: 13,
     minSpacing: 4,
     retryAttempts: 100,
   },
   hard: {
     gridSize: 10,
-    dotCount: 4,
+    dotCount: 25,
     minSpacing: 8,
     retryAttempts: 100,
   },
@@ -249,27 +249,28 @@ export const generateLevel = (
   const realSeed = seed ?? Math.floor(Math.random() * 2 ** 32);
   const rnd = new SeededRandom(realSeed);
 
-  for (let attempt = 1; attempt <= cfg.retryAttempts; ++attempt) {
-    const path = generateHamiltonianPath(cfg.gridSize, rnd);
-    const cps = selectCheckpoints(path, cfg.dotCount, cfg.minSpacing);
+  const path = generateHamiltonianPath(cfg.gridSize, rnd);
 
-    // if (isUniqueSolution(cfg.gridSize, cps)) {
-    return {
-      gridSize: cfg.gridSize,
-      numberedCells: cps.map(([r, c], i) => ({
-        row: r,
-        col: c,
-        number: i + 1,
-      })),
-      solutionPath: path,
-      difficulty,
-      seed: realSeed,
-    };
-    // }
-  }
-  throw new Error(
-    "Unable to make a uniquely-solvable level after many attempts"
-  );
+  // Calculate spacing between numbers
+  const spacing = Math.floor((path.length - 1) / (cfg.dotCount - 1));
+
+  // Create evenly spaced numbered cells, ensuring the last one is at the end
+  const numberedPath = Array.from(
+    { length: cfg.dotCount - 1 },
+    (_, i) => path[i * spacing]
+  ).concat([path[path.length - 1]]);
+
+  return {
+    gridSize: cfg.gridSize,
+    numberedCells: numberedPath.map(([r, c], i) => ({
+      row: r,
+      col: c,
+      number: i + 1,
+    })),
+    solutionPath: path,
+    difficulty,
+    seed: realSeed,
+  };
 };
 
 export const generateDailyLevel = (): Level => {
