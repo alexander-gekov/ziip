@@ -707,7 +707,8 @@ const ZipGame = () => {
           {/* Solve Button */}
           <Button
             onClick={animateSolution}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-medium">
+            className="w-full text-white py-3 rounded-xl font-medium opacity-80 hover:opacity-100"
+            style={{ background: gameColors.end }}>
             Solve
           </Button>
         </div>
@@ -716,6 +717,8 @@ const ZipGame = () => {
         <CompletionAnimation
           isComplete={gameState.isComplete}
           onAnimationComplete={handleAnimationComplete}
+          colors={gameColors}
+          timeElapsed={timeElapsed}
         />
       </div>
     </ErrorBoundary>

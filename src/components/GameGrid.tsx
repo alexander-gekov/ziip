@@ -145,27 +145,24 @@ export const GameGrid: React.FC<GameGridProps> = ({
       return {
         x: col * cellSize + cellSize / 2,
         y: row * cellSize + cellSize / 2,
+        isNumbered: grid[row][col].isNumbered,
       };
     });
 
     let pathData = `M ${points[0].x} ${points[0].y}`;
-    let totalLength = 0;
-
-    // Find the last correctly connected number
-    const lastCompletedIndex = currentPath.reduce((acc, cellId, index) => {
-      const cell = grid.flat().find((c) => c.id === cellId);
-      if (cell?.isNumbered && cell.number === index + 1) {
-        return index;
-      }
-      return acc;
-    }, -1);
 
     for (let i = 1; i < points.length; i++) {
       const current = points[i];
       const prev = points[i - 1];
       const next = i < points.length - 1 ? points[i + 1] : null;
 
-      if (next && i > 0) {
+      // If current point is a numbered cell, always go through its center
+      if (current.isNumbered) {
+        pathData += ` L ${current.x} ${current.y}`;
+        continue;
+      }
+
+      if (next && !next.isNumbered && i > 0) {
         const cornerRadius = Math.min(25, cellSize * 0.4);
 
         const prevDir = {
@@ -198,17 +195,8 @@ export const GameGrid: React.FC<GameGridProps> = ({
 
         pathData += ` L ${approachPoint.x} ${approachPoint.y}`;
         pathData += ` Q ${current.x} ${current.y} ${departPoint.x} ${departPoint.y}`;
-
-        totalLength += Math.sqrt(
-          Math.pow(approachPoint.x - prev.x, 2) +
-            Math.pow(approachPoint.y - prev.y, 2)
-        );
-        totalLength += (Math.PI / 2) * cornerRadius;
       } else {
         pathData += ` L ${current.x} ${current.y}`;
-        totalLength += Math.sqrt(
-          Math.pow(current.x - prev.x, 2) + Math.pow(current.y - prev.y, 2)
-        );
       }
     }
 
@@ -259,7 +247,7 @@ export const GameGrid: React.FC<GameGridProps> = ({
         <div
           ref={gridRef}
           className={cn(
-            "grid border-2 border-gray-400 bg-gray-100 rounded-lg overflow-hidden",
+            "grid border-2 border-gray-400 rounded-lg overflow-hidden",
             "shadow-lg transition-all duration-500 touch-none",
             showCompletionAnimation && "scale-105 shadow-xl"
           )}
@@ -268,6 +256,7 @@ export const GameGrid: React.FC<GameGridProps> = ({
             gridTemplateRows: `repeat(${gridSize}, ${cellSize}px)`,
             width: `${gridWidth}px`,
             height: `${gridHeight}px`,
+            background: colors.startBg,
           }}
           onMouseUp={onMouseUp}
           onMouseLeave={onMouseLeave}>

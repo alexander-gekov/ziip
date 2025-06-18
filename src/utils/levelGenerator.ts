@@ -246,7 +246,7 @@ export const generateLevel = (
   seed?: number
 ): Level => {
   const cfg = DIFFICULTY_CONFIGS[difficulty];
-  const realSeed = seed ?? Math.floor(Math.random() * 2 ** 32);
+  const realSeed = seed ?? Date.now();
   const rnd = new SeededRandom(realSeed);
 
   const path = generateHamiltonianPath(cfg.gridSize, rnd);

@@ -8,15 +8,20 @@ import {
 } from "@/components/ui/dialog";
 import { X } from "lucide-react";
 import ConfettiExplosion from "react-confetti-explosion";
+import { type GameColors } from "@/hooks/useGameColors";
 
 interface CompletionAnimationProps {
   isComplete: boolean;
   onAnimationComplete: () => void;
+  colors: GameColors;
+  timeElapsed: number;
 }
 
 export const CompletionAnimation: React.FC<CompletionAnimationProps> = ({
   isComplete,
   onAnimationComplete,
+  colors,
+  timeElapsed,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [hasShown, setHasShown] = useState(false);
@@ -28,6 +33,12 @@ export const CompletionAnimation: React.FC<CompletionAnimationProps> = ({
     particleCount: 200,
     width: 1600,
     colors: ["#FF5733", "#33FF57", "#5733FF", "#FFFF33", "#33FFFF"],
+  };
+
+  const formatTime = (seconds: number) => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
   };
 
   useEffect(() => {
@@ -53,6 +64,8 @@ export const CompletionAnimation: React.FC<CompletionAnimationProps> = ({
     setIsExploding(false);
     onAnimationComplete();
   };
+
+  if (!isOpen) return null;
 
   return (
     <>
@@ -96,10 +109,19 @@ export const CompletionAnimation: React.FC<CompletionAnimationProps> = ({
               <div className="text-7xl animate-bounce-slow">🎉</div>
             </div>
 
-            <DialogTitle className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-red-500 mb-3 animate-gradient">
-              Amazing!
+            <DialogTitle className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r mb-3 animate-gradient">
+              <span
+                className="bg-clip-text text-transparent bg-gradient-to-r"
+                style={{
+                  backgroundImage: `linear-gradient(to right, ${colors.start}, ${colors.end})`,
+                }}>
+                Amazing!
+              </span>
             </DialogTitle>
-            <div className="space-y-2">
+            <div className="space-y-4">
+              <div className="text-6xl font-bold text-gray-800 font-mono">
+                {formatTime(timeElapsed)}
+              </div>
               <p className="text-xl text-gray-700 font-medium">
                 Puzzle Complete!
               </p>

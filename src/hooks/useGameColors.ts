@@ -31,6 +31,7 @@ export const generateGameColors = () => {
     filledBg: `rgba(${startRgb[0]}, ${startRgb[1]}, ${startRgb[2]}, 0.2)`,
     highlightBg: `rgba(${startRgb[0]}, ${startRgb[1]}, ${startRgb[2]}, 0.4)`,
     activeBg: `rgba(${endRgb[0]}, ${endRgb[1]}, ${endRgb[2]}, 0.3)`,
+    startBg: `rgba(${startRgb[0]}, ${startRgb[1]}, ${startRgb[2]}, 0.2)`,
   };
 };
 
