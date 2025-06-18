@@ -1,4 +1,3 @@
-
 export interface NumberedCell {
   row: number;
   col: number;
@@ -77,7 +76,8 @@ export const generateDailyLevel = (): Level => {
   };
 
   const gridSize = 6;
-  const numberOfNumbers = 8;
+  // Random number count between 6-12 using seeded random
+  const numberOfNumbers = Math.floor(seededRandom() * 7) + 6; // 6-12
   
   // Generate a solvable path
   const solutionPath = generateSolvablePath(gridSize, numberOfNumbers);
@@ -103,14 +103,9 @@ export const generateRandomLevel = (difficulty: 'easy' | 'medium' | 'hard' = 'me
     hard: 7
   };
 
-  const numbersCount = {
-    easy: 6,
-    medium: 8,
-    hard: 10
-  };
-
   const gridSize = gridSizes[difficulty];
-  const numCount = numbersCount[difficulty];
+  // Random number count between 6-12
+  const numCount = Math.floor(Math.random() * 7) + 6; // 6-12
   
   // Generate a solvable path
   const solutionPath = generateSolvablePath(gridSize, numCount);

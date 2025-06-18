@@ -1,10 +1,10 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { GameGrid } from './GameGrid';
 import { GameControls } from './GameControls';
 import { GameInstructions } from './GameInstructions';
+import { CompletionAnimation } from './CompletionAnimation';
 import { generateDailyLevel } from '../utils/levelGenerator';
 import { toast } from 'sonner';
 
@@ -39,6 +39,7 @@ const ZipGame = () => {
   });
 
   const [gameHistory, setGameHistory] = useState<GameState[]>([]);
+  const [showCompletionAnimation, setShowCompletionAnimation] = useState(false);
 
   // Initialize game with daily level
   useEffect(() => {
@@ -149,7 +150,7 @@ const ZipGame = () => {
     }));
 
     if (isComplete) {
-      toast.success("Congratulations! You solved the puzzle!");
+      setShowCompletionAnimation(true);
     }
   };
 
@@ -160,6 +161,11 @@ const ZipGame = () => {
     // Simple win condition: all cells filled and numbered cells connected
     const allCellsFilled = grid.flat().every(cell => cell.isFilled || cell.isNumbered);
     return allCellsFilled && numberedCells.length > 0;
+  };
+
+  const handleAnimationComplete = () => {
+    setShowCompletionAnimation(false);
+    toast.success("Congratulations! You solved the puzzle!");
   };
 
   const handleUndo = () => {
@@ -214,6 +220,7 @@ const ZipGame = () => {
             onCellHover={handleCellHover}
             onPathFinalize={finalizePath}
             isComplete={gameState.isComplete}
+            showCompletionAnimation={showCompletionAnimation}
           />
         </Card>
 
@@ -246,6 +253,12 @@ const ZipGame = () => {
           </Button>
         )}
       </div>
+
+      {/* Completion Animation */}
+      <CompletionAnimation 
+        isComplete={gameState.isComplete}
+        onAnimationComplete={handleAnimationComplete}
+      />
     </div>
   );
 };

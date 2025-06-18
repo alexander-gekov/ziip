@@ -11,6 +11,7 @@ interface GameGridProps {
   onCellHover: (cellId: string) => void;
   onPathFinalize: () => void;
   isComplete: boolean;
+  showCompletionAnimation: boolean;
 }
 
 export const GameGrid: React.FC<GameGridProps> = ({
@@ -20,7 +21,8 @@ export const GameGrid: React.FC<GameGridProps> = ({
   onCellClick,
   onCellHover,
   onPathFinalize,
-  isComplete
+  isComplete,
+  showCompletionAnimation
 }) => {
   const handleMouseUp = () => {
     if (isDrawing) {
@@ -51,6 +53,10 @@ export const GameGrid: React.FC<GameGridProps> = ({
         
         // Start and end emphasis
         "scale-110 shadow-lg": isPathStart || isPathEnd,
+        
+        // Completion animation - make filled cells glow and scale
+        "animate-pulse bg-gradient-to-r from-green-400 to-blue-500 border-blue-600 scale-110 shadow-xl": 
+          showCompletionAnimation && (cell.isFilled || cell.isNumbered),
       }
     );
   };
@@ -58,7 +64,10 @@ export const GameGrid: React.FC<GameGridProps> = ({
   return (
     <div className="flex justify-center">
       <div 
-        className="grid gap-1 p-4 bg-gray-50 rounded-xl border-2 border-gray-200"
+        className={cn(
+          "grid gap-1 p-4 bg-gray-50 rounded-xl border-2 border-gray-200 transition-all duration-500",
+          showCompletionAnimation && "scale-105 shadow-2xl bg-gradient-to-br from-green-50 to-blue-50"
+        )}
         style={{ gridTemplateColumns: `repeat(${grid.length}, 1fr)` }}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
