@@ -171,7 +171,7 @@ const getUnvisitedNeighbors = (
 };
 
 // ────────────────────────────────────────────────────────────────────────────
-// Hamiltonian path (depth-first with Warnsdorff heuristic)
+// Hamiltonian path (depth-first with optimized Warnsdorff heuristic)
 // ────────────────────────────────────────────────────────────────────────────
 const generateHamiltonianPath = (
   gridSize: number,
@@ -180,8 +180,43 @@ const generateHamiltonianPath = (
 ): Array<[number, number]> | null => {
   const total = gridSize * gridSize;
   const visited = new Set<string>();
+  const neighborCounts = new Map<string, number>();
 
-  // start from a random cell anywhere in the grid
+  const getNeighborCount = (pos: [number, number]): number => {
+    const posKey = key(pos);
+    if (!neighborCounts.has(posKey)) {
+      neighborCounts.set(
+        posKey,
+        getUnvisitedNeighbors(pos, gridSize, visited, []).length
+      );
+    }
+    return neighborCounts.get(posKey)!;
+  };
+
+  const clearNeighborCache = (pos: [number, number]) => {
+    const [row, col] = pos;
+    const directions = [
+      [-1, 0],
+      [1, 0],
+      [0, -1],
+      [0, 1],
+    ];
+
+    for (const [dr, dc] of directions) {
+      const newRow = row + dr;
+      const newCol = col + dc;
+      if (
+        newRow >= 0 &&
+        newRow < gridSize &&
+        newCol >= 0 &&
+        newCol < gridSize
+      ) {
+        neighborCounts.delete(key([newRow, newCol]));
+      }
+    }
+    neighborCounts.delete(key(pos));
+  };
+
   const start: [number, number] = [
     rnd.nextInt(0, gridSize - 1),
     rnd.nextInt(0, gridSize - 1),
@@ -193,32 +228,42 @@ const generateHamiltonianPath = (
 
   const dfs = (current: [number, number]): boolean => {
     if (retries >= maxRetries) return false;
-    if (path.length === total) return true; // done
+    if (path.length === total) return true;
 
-    // choose neighbours with fewest onward moves first  (Warnsdorff)
-    const neighbours = getUnvisitedNeighbors(current, gridSize, visited, []);
-    shuffleInPlace(neighbours, rnd);
-    neighbours.sort(
-      (a, b) =>
-        getUnvisitedNeighbors(a, gridSize, visited, []).length -
-        getUnvisitedNeighbors(b, gridSize, visited, []).length
-    );
+    const neighbors = getUnvisitedNeighbors(current, gridSize, visited, []);
 
-    for (const nxt of neighbours) {
+    // Early pruning: if no neighbors and path not complete, backtrack
+    if (neighbors.length === 0 && path.length < total) {
+      return false;
+    }
+
+    // Sort neighbors by Warnsdorff's rule (fewest onward moves first)
+    // Break ties randomly to avoid getting stuck in local patterns
+    shuffleInPlace(neighbors, rnd);
+    neighbors.sort((a, b) => {
+      const countDiff = getNeighborCount(a) - getNeighborCount(b);
+      return countDiff === 0 ? rnd.next() - 0.5 : countDiff;
+    });
+
+    for (const nxt of neighbors) {
       visited.add(key(nxt));
       path.push(nxt);
+      clearNeighborCache(nxt); // Clear cache for affected cells
 
-      if (dfs(nxt)) return true; // propagate success
+      if (dfs(nxt)) return true;
 
-      // back-track
+      // Backtrack
       path.pop();
       visited.delete(key(nxt));
+      clearNeighborCache(nxt); // Clear cache after backtracking
       retries++;
     }
-    return false; // dead end
+
+    return false;
   };
 
-  return dfs(start) ? path : null;
+  const result = dfs(start);
+  return result ? path : null;
 };
 
 // ────────────────────────────────────────────────────────────────────────────
