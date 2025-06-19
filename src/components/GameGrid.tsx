@@ -252,13 +252,15 @@ export const GameGrid: React.FC<GameGridProps> = ({
 
           @keyframes stretchPath {
             0% {
-              stroke-width: ${cellSize * 0.3}px;
+              stroke-width: ${Math.min(cellSize * 0.4, 20)}px;
+              stroke-dasharray: ${pathLength * 0.4};
+              filter: blur(0px);
             }
             70% {
-              stroke-width: ${cellSize * 0.75}px;
+              stroke-width: ${Math.min(cellSize * 0.8, 35)}px;
             }
             100% {
-              stroke-width: ${cellSize * 0.7}px;
+              stroke-width: ${Math.min(cellSize * 0.7, 30)}px;
             }
           }
 
@@ -324,7 +326,10 @@ export const GameGrid: React.FC<GameGridProps> = ({
             style={{ zIndex: 20 }}>
             <defs>
               <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-                <feGaussianBlur stdDeviation="4" result="coloredBlur" />
+                <feGaussianBlur
+                  stdDeviation={Math.min(4, 12 / gridSize)}
+                  result="coloredBlur"
+                />
                 <feMerge>
                   <feMergeNode in="coloredBlur" />
                   <feMergeNode in="SourceGraphic" />
@@ -342,7 +347,11 @@ export const GameGrid: React.FC<GameGridProps> = ({
               ref={pathRef}
               d={getPathData()}
               stroke="url(#pathGradient)"
-              strokeWidth={isDrawing ? cellSize * 0.3 : cellSize * 0.7}
+              strokeWidth={
+                isDrawing
+                  ? Math.min(cellSize * 0.3, 15)
+                  : Math.min(cellSize * 0.7, 30)
+              }
               fill="none"
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -364,7 +373,11 @@ export const GameGrid: React.FC<GameGridProps> = ({
             <path
               d={getPathData()}
               stroke="url(#pathGradient)"
-              strokeWidth={isDrawing ? cellSize * 0.3 : cellSize * 0.7}
+              strokeWidth={
+                isDrawing
+                  ? Math.min(cellSize * 0.3, 15)
+                  : Math.min(cellSize * 0.7, 30)
+              }
               fill="none"
               strokeLinecap="round"
               strokeLinejoin="round"

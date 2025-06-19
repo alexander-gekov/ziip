@@ -18,35 +18,50 @@ export interface Level {
   walls: Wall[];
 }
 
-const DIFFICULTY_CONFIGS = {
-  easy: {
-    gridSize: 6,
-    minDotCount: 3,
-    maxDotCount: 7,
-    minSpacing: 2,
-    retryAttempts: 100,
-    wallCount: 2,
-    wallProbability: 0.1,
-  },
-  medium: {
-    gridSize: 8,
-    minDotCount: 4,
-    maxDotCount: 8,
-    minSpacing: 4,
-    retryAttempts: 100,
-    wallCount: 9,
-    wallProbability: 0.4,
-  },
-  hard: {
-    gridSize: 10,
-    minDotCount: 7,
-    maxDotCount: 7,
-    minSpacing: 8,
-    retryAttempts: 100,
-    wallCount: 16,
-    wallProbability: 0.5,
-  },
+type DifficultyConfig = {
+  gridSize: number;
+  minDotCount: number;
+  maxDotCount: number;
+  minSpacing: number;
+  retryAttempts: number;
+  wallCount: number;
+  wallProbability: number;
+  difficulty: "easy" | "medium" | "hard";
 };
+
+const DIFFICULTY_CONFIGS: Record<"easy" | "medium" | "hard", DifficultyConfig> =
+  {
+    easy: {
+      gridSize: 6,
+      minDotCount: 3,
+      maxDotCount: 7,
+      minSpacing: 2,
+      retryAttempts: 100,
+      wallCount: 4, // Maximum possible walls for easy mode
+      wallProbability: 0.2, // 20% chance per potential wall location
+      difficulty: "easy",
+    },
+    medium: {
+      gridSize: 8,
+      minDotCount: 4,
+      maxDotCount: 8,
+      minSpacing: 4,
+      retryAttempts: 100,
+      wallCount: 9,
+      wallProbability: 0.4,
+      difficulty: "medium",
+    },
+    hard: {
+      gridSize: 10,
+      minDotCount: 7,
+      maxDotCount: 7,
+      minSpacing: 8,
+      retryAttempts: 100,
+      wallCount: 16,
+      wallProbability: 0.5,
+      difficulty: "hard",
+    },
+  };
 
 class SeededRandom {
   private seed: number;
@@ -280,7 +295,7 @@ const generateWalls = (
   gridSize: number,
   solutionPath: Array<[number, number]>,
   numberedCells: NumberedCell[],
-  config: typeof DIFFICULTY_CONFIGS.easy,
+  config: DifficultyConfig,
   rnd: SeededRandom
 ): Wall[] => {
   const walls: Wall[] = [];
@@ -330,6 +345,11 @@ const generateWalls = (
 
   while (walls.length < config.wallCount && attempts < maxAttempts) {
     attempts++;
+
+    // Skip wall placement based on probability (only for easy difficulty)
+    if (config.difficulty === "easy" && rnd.next() > config.wallProbability) {
+      continue;
+    }
 
     // Randomly select a cell
     const row = rnd.nextInt(0, gridSize - 1);
