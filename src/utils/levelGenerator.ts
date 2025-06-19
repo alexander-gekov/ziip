@@ -21,17 +21,17 @@ export interface Level {
 const DIFFICULTY_CONFIGS = {
   easy: {
     gridSize: 6,
-    minDotCount: 5,
+    minDotCount: 3,
     maxDotCount: 7,
     minSpacing: 2,
     retryAttempts: 100,
     wallCount: 2,
-    wallProbability: 0.2,
+    wallProbability: 0.1,
   },
   medium: {
     gridSize: 8,
-    minDotCount: 8,
-    maxDotCount: 13,
+    minDotCount: 4,
+    maxDotCount: 8,
     minSpacing: 4,
     retryAttempts: 100,
     wallCount: 9,
@@ -39,8 +39,8 @@ const DIFFICULTY_CONFIGS = {
   },
   hard: {
     gridSize: 10,
-    minDotCount: 12,
-    maxDotCount: 25,
+    minDotCount: 7,
+    maxDotCount: 7,
     minSpacing: 8,
     retryAttempts: 100,
     wallCount: 16,

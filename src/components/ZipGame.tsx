@@ -295,9 +295,8 @@ const ZipGame = () => {
       // Case 1: Moving to a cell that's already in our path (backtracking)
       if (gameState.currentPath.includes(cellId)) {
         const cellIndex = gameState.currentPath.indexOf(cellId);
-        // Only allow backtracking if we're moving to a cell that's already connected
-        // and it's adjacent to our current position
-        if (cellIndex >= 0) {
+        // Only allow backtracking if we're moving to the previous cell in the path
+        if (cellIndex === gameState.currentPath.length - 2) {
           const newPath = gameState.currentPath.slice(0, cellIndex + 1);
 
           // Update the grid to clear highlighting from removed cells
@@ -355,7 +354,33 @@ const ZipGame = () => {
     const rowDiff = Math.abs(row1 - row2);
     const colDiff = Math.abs(col1 - col2);
 
-    return (rowDiff === 1 && colDiff === 0) || (rowDiff === 0 && colDiff === 1);
+    // First check if cells are adjacent
+    const isNextTo =
+      (rowDiff === 1 && colDiff === 0) || (rowDiff === 0 && colDiff === 1);
+    if (!isNextTo) return false;
+
+    // Then check for walls
+    const cell1 = gameState.grid[row1][col1];
+    const cell2 = gameState.grid[row2][col2];
+
+    // Moving up
+    if (row2 < row1) {
+      return !cell1.walls.top && !cell2.walls.bottom;
+    }
+    // Moving down
+    if (row2 > row1) {
+      return !cell1.walls.bottom && !cell2.walls.top;
+    }
+    // Moving left
+    if (col2 < col1) {
+      return !cell1.walls.left && !cell2.walls.right;
+    }
+    // Moving right
+    if (col2 > col1) {
+      return !cell1.walls.right && !cell2.walls.left;
+    }
+
+    return false;
   };
 
   const finalizePath = () => {
