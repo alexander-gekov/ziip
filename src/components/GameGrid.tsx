@@ -195,13 +195,18 @@ export const GameGrid: React.FC<GameGridProps> = ({
 
     return cn(
       "aspect-square transition-all duration-300 cursor-pointer relative",
-      "flex items-center justify-center border border-gray-300",
+      "flex items-center justify-center",
       {
         "bg-white": !cell.isFilled && !cell.isHighlighted,
         [colors.filledBg]: cell.isFilled && !isInCurrentPath,
         [colors.activeBg]: isInCurrentPath,
         [colors.highlightBg]: !cell.isNumbered && cell.isHighlighted,
         "shadow-inner": cell.isFilled,
+        "border border-gray-300": true,
+        "border-t-4 border-t-gray-800": cell.walls.top,
+        "border-r-4 border-r-gray-800": cell.walls.right,
+        "border-b-4 border-b-gray-800": cell.walls.bottom,
+        "border-l-4 border-l-gray-800": cell.walls.left,
       }
     );
   };

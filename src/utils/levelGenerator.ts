@@ -4,32 +4,47 @@ export interface NumberedCell {
   number: number;
 }
 
+export interface Wall {
+  cell1: [number, number];
+  cell2: [number, number];
+}
+
 export interface Level {
   gridSize: number;
   numberedCells: NumberedCell[];
   difficulty: "easy" | "medium" | "hard";
   solutionPath: Array<[number, number]>;
   seed: number;
+  walls: Wall[];
 }
 
 const DIFFICULTY_CONFIGS = {
   easy: {
     gridSize: 6,
-    dotCount: 6,
+    minDotCount: 5,
+    maxDotCount: 7,
     minSpacing: 2,
     retryAttempts: 100,
+    wallCount: 2,
+    wallProbability: 0.2,
   },
   medium: {
     gridSize: 8,
-    dotCount: 13,
+    minDotCount: 8,
+    maxDotCount: 13,
     minSpacing: 4,
     retryAttempts: 100,
+    wallCount: 9,
+    wallProbability: 0.4,
   },
   hard: {
     gridSize: 10,
-    dotCount: 25,
+    minDotCount: 12,
+    maxDotCount: 25,
     minSpacing: 8,
     retryAttempts: 100,
+    wallCount: 16,
+    wallProbability: 0.5,
   },
 };
 
@@ -76,6 +91,7 @@ const getUnvisitedNeighbors = (
   current: [number, number],
   gridSize: number,
   visited: Set<string>,
+  walls: Wall[] = [],
   preferredDirection?: "horizontal" | "vertical"
 ): Array<[number, number]> => {
   const [row, col] = current;
@@ -83,26 +99,43 @@ const getUnvisitedNeighbors = (
 
   // Order directions based on preference
   let directions: Array<[number, number]> = [
-    [-1, 0],
-    [1, 0],
-    [0, -1],
-    [0, 1],
+    [-1, 0], // top
+    [1, 0], // bottom
+    [0, -1], // left
+    [0, 1], // right
   ];
   if (preferredDirection === "horizontal") {
     directions = [
-      [0, -1],
-      [0, 1],
-      [-1, 0],
-      [1, 0],
+      [0, -1], // left
+      [0, 1], // right
+      [-1, 0], // top
+      [1, 0], // bottom
     ]; // prefer horizontal movement
   } else if (preferredDirection === "vertical") {
     directions = [
-      [-1, 0],
-      [1, 0],
-      [0, -1],
-      [0, 1],
+      [-1, 0], // top
+      [1, 0], // bottom
+      [0, -1], // left
+      [0, 1], // right
     ]; // prefer vertical movement
   }
+
+  const hasWallBetween = (
+    cell1: [number, number],
+    cell2: [number, number]
+  ): boolean => {
+    return walls.some(
+      (wall) =>
+        (wall.cell1[0] === cell1[0] &&
+          wall.cell1[1] === cell1[1] &&
+          wall.cell2[0] === cell2[0] &&
+          wall.cell2[1] === cell2[1]) ||
+        (wall.cell1[0] === cell2[0] &&
+          wall.cell1[1] === cell2[1] &&
+          wall.cell2[0] === cell1[0] &&
+          wall.cell2[1] === cell1[1])
+    );
+  };
 
   for (const [dr, dc] of directions) {
     const newRow = row + dr;
@@ -112,7 +145,8 @@ const getUnvisitedNeighbors = (
       newRow < gridSize &&
       newCol >= 0 &&
       newCol < gridSize &&
-      !visited.has(`${newRow},${newCol}`)
+      !visited.has(`${newRow},${newCol}`) &&
+      !hasWallBetween([row, col], [newRow, newCol])
     ) {
       neighbors.push([newRow, newCol]);
     }
@@ -126,8 +160,9 @@ const getUnvisitedNeighbors = (
 // ────────────────────────────────────────────────────────────────────────────
 const generateHamiltonianPath = (
   gridSize: number,
-  rnd: SeededRandom
-): Array<[number, number]> => {
+  rnd: SeededRandom,
+  maxRetries: number = 1000
+): Array<[number, number]> | null => {
   const total = gridSize * gridSize;
   const visited = new Set<string>();
 
@@ -139,16 +174,19 @@ const generateHamiltonianPath = (
   const path: Array<[number, number]> = [start];
   visited.add(key(start));
 
+  let retries = 0;
+
   const dfs = (current: [number, number]): boolean => {
+    if (retries >= maxRetries) return false;
     if (path.length === total) return true; // done
 
     // choose neighbours with fewest onward moves first  (Warnsdorff)
-    const neighbours = getUnvisitedNeighbors(current, gridSize, visited);
+    const neighbours = getUnvisitedNeighbors(current, gridSize, visited, []);
     shuffleInPlace(neighbours, rnd);
     neighbours.sort(
       (a, b) =>
-        getUnvisitedNeighbors(a, gridSize, visited).length -
-        getUnvisitedNeighbors(b, gridSize, visited).length
+        getUnvisitedNeighbors(a, gridSize, visited, []).length -
+        getUnvisitedNeighbors(b, gridSize, visited, []).length
     );
 
     for (const nxt of neighbours) {
@@ -160,16 +198,12 @@ const generateHamiltonianPath = (
       // back-track
       path.pop();
       visited.delete(key(nxt));
+      retries++;
     }
     return false; // dead end
   };
 
-  if (!dfs(start))
-    throw new Error(
-      "Could not build Hamiltonian path – this should not happen"
-    );
-
-  return path;
+  return dfs(start) ? path : null;
 };
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -208,7 +242,8 @@ const selectCheckpoints = (
 // ────────────────────────────────────────────────────────────────────────────
 const isUniqueSolution = (
   gridSize: number,
-  checkpoints: Array<[number, number]>
+  checkpoints: Array<[number, number]>,
+  walls: Wall[] = []
 ): boolean => {
   const visited = new Set<string>();
   let count = 0;
@@ -224,7 +259,7 @@ const isUniqueSolution = (
       }
     }
 
-    const moves = getUnvisitedNeighbors(pos, gridSize, visited);
+    const moves = getUnvisitedNeighbors(pos, gridSize, visited, walls);
     for (const nxt of moves) {
       visited.add(key(nxt));
       dfs(nxt, targetIdx);
@@ -241,36 +276,190 @@ const isUniqueSolution = (
 // ────────────────────────────────────────────────────────────────────────────
 // generateLevel – retry loop fixed, uniqueness enforced
 // ────────────────────────────────────────────────────────────────────────────
+const generateWalls = (
+  gridSize: number,
+  solutionPath: Array<[number, number]>,
+  numberedCells: NumberedCell[],
+  config: typeof DIFFICULTY_CONFIGS.easy,
+  rnd: SeededRandom
+): Wall[] => {
+  const walls: Wall[] = [];
+  const solutionPathSet = new Set(solutionPath.map(([r, c]) => `${r},${c}`));
+  const numberedCellsSet = new Set(
+    numberedCells.map((cell) => `${cell.row},${cell.col}`)
+  );
+
+  // Helper to check if a wall would block the solution path
+  const wouldBlockSolution = (
+    cell1: [number, number],
+    cell2: [number, number]
+  ): boolean => {
+    // Check if both cells are in the solution path and are consecutive
+    const cell1Key = `${cell1[0]},${cell1[1]}`;
+    const cell2Key = `${cell2[0]},${cell2[1]}`;
+    if (!solutionPathSet.has(cell1Key) || !solutionPathSet.has(cell2Key)) {
+      return false;
+    }
+
+    // Find positions in solution path
+    const pos1 = solutionPath.findIndex(
+      ([r, c]) => r === cell1[0] && c === cell1[1]
+    );
+    const pos2 = solutionPath.findIndex(
+      ([r, c]) => r === cell2[0] && c === cell2[1]
+    );
+
+    // Check if they are consecutive in the solution path
+    return Math.abs(pos1 - pos2) === 1;
+  };
+
+  // Helper to check if a wall would block a numbered cell
+  const wouldBlockNumberedCell = (
+    cell1: [number, number],
+    cell2: [number, number]
+  ): boolean => {
+    return (
+      numberedCellsSet.has(`${cell1[0]},${cell1[1]}`) ||
+      numberedCellsSet.has(`${cell2[0]},${cell2[1]}`)
+    );
+  };
+
+  // Try to place walls
+  let attempts = 0;
+  const maxAttempts = gridSize * gridSize * 4;
+
+  while (walls.length < config.wallCount && attempts < maxAttempts) {
+    attempts++;
+
+    // Randomly select a cell
+    const row = rnd.nextInt(0, gridSize - 1);
+    const col = rnd.nextInt(0, gridSize - 1);
+
+    // Randomly choose wall direction (0: horizontal, 1: vertical)
+    const direction = rnd.nextInt(0, 2);
+
+    if (direction < 1 && col < gridSize - 1) {
+      // Right wall
+      const cell1: [number, number] = [row, col];
+      const cell2: [number, number] = [row, col + 1];
+
+      if (
+        !wouldBlockSolution(cell1, cell2) &&
+        !wouldBlockNumberedCell(cell1, cell2)
+      ) {
+        const wall = { cell1, cell2 };
+        // Check if wall already exists
+        if (
+          !walls.some(
+            (w) =>
+              (w.cell1[0] === wall.cell1[0] &&
+                w.cell1[1] === wall.cell1[1] &&
+                w.cell2[0] === wall.cell2[0] &&
+                w.cell2[1] === wall.cell2[1]) ||
+              (w.cell1[0] === wall.cell2[0] &&
+                w.cell1[1] === wall.cell2[1] &&
+                w.cell2[0] === wall.cell1[0] &&
+                w.cell2[1] === wall.cell1[1])
+          )
+        ) {
+          walls.push(wall);
+        }
+      }
+    } else if (direction >= 1 && row < gridSize - 1) {
+      // Bottom wall
+      const cell1: [number, number] = [row, col];
+      const cell2: [number, number] = [row + 1, col];
+
+      if (
+        !wouldBlockSolution(cell1, cell2) &&
+        !wouldBlockNumberedCell(cell1, cell2)
+      ) {
+        const wall = { cell1, cell2 };
+        // Check if wall already exists
+        if (
+          !walls.some(
+            (w) =>
+              (w.cell1[0] === wall.cell1[0] &&
+                w.cell1[1] === wall.cell1[1] &&
+                w.cell2[0] === wall.cell2[0] &&
+                w.cell2[1] === wall.cell2[1]) ||
+              (w.cell1[0] === wall.cell2[0] &&
+                w.cell1[1] === wall.cell2[1] &&
+                w.cell2[0] === wall.cell1[0] &&
+                w.cell2[1] === wall.cell1[1])
+          )
+        ) {
+          walls.push(wall);
+        }
+      }
+    }
+  }
+
+  return walls;
+};
+
 export const generateLevel = (
   difficulty: "easy" | "medium" | "hard" = "medium",
-  seed?: number
+  seed?: number,
+  maxAttempts: number = 5
 ): Level => {
   const cfg = DIFFICULTY_CONFIGS[difficulty];
-  const realSeed = seed ?? Date.now();
-  const rnd = new SeededRandom(realSeed);
+  let realSeed = seed ?? Date.now();
+  let attempts = 0;
 
-  const path = generateHamiltonianPath(cfg.gridSize, rnd);
+  while (attempts < maxAttempts) {
+    try {
+      const rnd = new SeededRandom(realSeed);
+      const path = generateHamiltonianPath(cfg.gridSize, rnd, 1000);
 
-  // Calculate spacing between numbers
-  const spacing = Math.floor((path.length - 1) / (cfg.dotCount - 1));
+      if (!path) {
+        attempts++;
+        realSeed = Date.now(); // Use a new seed for the next attempt
+        continue;
+      }
 
-  // Create evenly spaced numbered cells, ensuring the last one is at the end
-  const numberedPath = Array.from(
-    { length: cfg.dotCount - 1 },
-    (_, i) => path[i * spacing]
-  ).concat([path[path.length - 1]]);
+      // Generate random number of dots between min and max
+      const dotCount = rnd.nextInt(cfg.minDotCount, cfg.maxDotCount);
 
-  return {
-    gridSize: cfg.gridSize,
-    numberedCells: numberedPath.map(([r, c], i) => ({
-      row: r,
-      col: c,
-      number: i + 1,
-    })),
-    solutionPath: path,
-    difficulty,
-    seed: realSeed,
-  };
+      // Calculate spacing between numbers
+      const spacing = Math.floor((path.length - 1) / (dotCount - 1));
+
+      // Create evenly spaced numbered cells, ensuring the last one is at the end
+      const numberedPath = Array.from(
+        { length: dotCount - 1 },
+        (_, i) => path[i * spacing]
+      ).concat([path[path.length - 1]]);
+
+      const numberedCells = numberedPath.map(([r, c], i) => ({
+        row: r,
+        col: c,
+        number: i + 1,
+      }));
+
+      // Generate walls
+      const walls = generateWalls(cfg.gridSize, path, numberedCells, cfg, rnd);
+
+      return {
+        gridSize: cfg.gridSize,
+        numberedCells,
+        solutionPath: path,
+        difficulty,
+        seed: realSeed,
+        walls,
+      };
+    } catch (error) {
+      attempts++;
+      realSeed = Date.now(); // Use a new seed for the next attempt
+
+      if (attempts >= maxAttempts) {
+        throw new Error(
+          `Failed to generate level after ${maxAttempts} attempts`
+        );
+      }
+    }
+  }
+
+  throw new Error(`Failed to generate level after ${maxAttempts} attempts`);
 };
 
 export const generateDailyLevel = (): Level => {

@@ -24,6 +24,12 @@ export interface Cell {
   isPath: boolean;
   isConnected: boolean;
   isHighlighted?: boolean;
+  walls: {
+    top: boolean;
+    right: boolean;
+    bottom: boolean;
+    left: boolean;
+  };
 }
 
 export interface GameState {
@@ -114,6 +120,7 @@ const ZipGame = () => {
   const initializeGrid = (level: Level) => {
     const grid: Cell[][] = [];
 
+    // Initialize grid with empty cells
     for (let row = 0; row < level.gridSize; row++) {
       const gridRow: Cell[] = [];
       for (let col = 0; col < level.gridSize; col++) {
@@ -132,9 +139,42 @@ const ZipGame = () => {
           isPath: false,
           isConnected: false,
           isHighlighted: false,
+          walls: {
+            top: false,
+            right: false,
+            bottom: false,
+            left: false,
+          },
         });
       }
       grid.push(gridRow);
+    }
+
+    // Add walls
+    for (const wall of level.walls) {
+      const [row1, col1] = wall.cell1;
+      const [row2, col2] = wall.cell2;
+
+      // Determine wall direction and set wall flags
+      if (row1 === row2) {
+        // Horizontal wall (right/left)
+        if (col1 < col2) {
+          grid[row1][col1].walls.right = true;
+          grid[row2][col2].walls.left = true;
+        } else {
+          grid[row1][col1].walls.left = true;
+          grid[row2][col2].walls.right = true;
+        }
+      } else if (col1 === col2) {
+        // Vertical wall (top/bottom)
+        if (row1 < row2) {
+          grid[row1][col1].walls.bottom = true;
+          grid[row2][col2].walls.top = true;
+        } else {
+          grid[row1][col1].walls.top = true;
+          grid[row2][col2].walls.bottom = true;
+        }
+      }
     }
 
     setGameState({
@@ -391,16 +431,41 @@ const ZipGame = () => {
       if (current.id === end.id) return true;
 
       const [row, col] = current.id.split("-").map(Number);
-      const adjacent = getAdjacentCells(grid, row, col);
+      const directions = [
+        [-1, 0], // top
+        [1, 0], // bottom
+        [0, -1], // left
+        [0, 1], // right
+      ];
 
-      for (const next of adjacent) {
-        if (!visited.has(next.id) && (next.isFilled || next.isNumbered)) {
-          visited.add(next.id);
-          queue.push(next);
+      for (const [dr, dc] of directions) {
+        const newRow = row + dr;
+        const newCol = col + dc;
+
+        if (
+          newRow >= 0 &&
+          newRow < grid.length &&
+          newCol >= 0 &&
+          newCol < grid[0].length
+        ) {
+          const next = grid[newRow][newCol];
+          const hasWall =
+            (dr === -1 && current.walls.top) || // moving up
+            (dr === 1 && current.walls.bottom) || // moving down
+            (dc === -1 && current.walls.left) || // moving left
+            (dc === 1 && current.walls.right); // moving right
+
+          if (
+            !visited.has(next.id) &&
+            (next.isFilled || next.isNumbered) &&
+            !hasWall
+          ) {
+            visited.add(next.id);
+            queue.push(next);
+          }
         }
       }
     }
-
     return false;
   };
 
@@ -623,11 +688,13 @@ const ZipGame = () => {
       setTimeElapsed(0);
       setIsTimerRunning(false);
       toast.success(`New ${newDifficulty} game started!`);
+      console.log(level);
     } catch (error) {
       console.error("Failed to generate level:", error);
       toast.error("Failed to start a new game. Please try again.");
       // Fallback to easy level if random generation fails
       const level = generateRandomLevel("easy");
+      console.log(level);
       setGridSize(level.gridSize);
       setDifficulty("easy");
       initializeGrid(level);
