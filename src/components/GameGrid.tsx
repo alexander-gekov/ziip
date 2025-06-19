@@ -244,6 +244,22 @@ export const GameGrid: React.FC<GameGridProps> = ({
               box-shadow: 0 0 5px rgba(255,255,255,0.2);
             }
           }
+
+          @keyframes stretchPath {
+            0% {
+              stroke-width: ${cellSize * 0.3}px;
+            }
+            70% {
+              stroke-width: ${cellSize * 0.75}px;
+            }
+            100% {
+              stroke-width: ${cellSize * 0.7}px;
+            }
+          }
+
+          .path-stretch {
+            animation: stretchPath 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+          }
         `}
       </style>
       <div className="relative">
@@ -314,15 +330,6 @@ export const GameGrid: React.FC<GameGridProps> = ({
                 <stop offset="0%" stopColor={colors.start} />
                 <stop offset="100%" stopColor={colors.end} />
               </linearGradient>
-
-              <animate
-                xlinkHref="#pathAnimation"
-                attributeName="d"
-                dur="0.3s"
-                fill="freeze"
-                calcMode="spline"
-                keySplines="0.64, 0.57, 0.67, 1.53"
-              />
             </defs>
 
             {/* Shadow/outline path */}
@@ -330,7 +337,7 @@ export const GameGrid: React.FC<GameGridProps> = ({
               ref={pathRef}
               d={getPathData()}
               stroke="url(#pathGradient)"
-              strokeWidth={cellSize * 0.7}
+              strokeWidth={isDrawing ? cellSize * 0.3 : cellSize * 0.7}
               fill="none"
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -338,7 +345,8 @@ export const GameGrid: React.FC<GameGridProps> = ({
               pathLength="1"
               className={cn(
                 "transition-[d,stroke-dashoffset] duration-500 ease-in-out",
-                showCompletionAnimation && "animate-pulse"
+                showCompletionAnimation && "animate-pulse",
+                !isDrawing && "path-stretch"
               )}
               style={{
                 transition: "d 0.5s cubic-bezier(0.4, 0, 0.2, 1)",
@@ -351,7 +359,7 @@ export const GameGrid: React.FC<GameGridProps> = ({
             <path
               d={getPathData()}
               stroke="url(#pathGradient)"
-              strokeWidth={cellSize * 0.7}
+              strokeWidth={isDrawing ? cellSize * 0.3 : cellSize * 0.7}
               fill="none"
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -360,7 +368,8 @@ export const GameGrid: React.FC<GameGridProps> = ({
               pathLength="1"
               className={cn(
                 "transition-[d,stroke-dashoffset] duration-500 ease-in-out",
-                showCompletionAnimation && "animate-pulse"
+                showCompletionAnimation && "animate-pulse",
+                !isDrawing && "path-stretch"
               )}
               style={{
                 transition: "d 0.5s cubic-bezier(0.4, 0, 0.2, 1)",
