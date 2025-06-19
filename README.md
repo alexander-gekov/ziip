@@ -1,73 +1,103 @@
-# Welcome to your Lovable project
+# <img src="public/favicon.ico" width="32" height="32" alt="Ziip Icon" style="vertical-align: middle"> Ziip - A Puzzle Adventure
 
-## Project info
+Connect the dots in this minimalist yet challenging puzzle game. Draw paths between numbered cells while navigating through walls and obstacles.
 
-**URL**: https://lovable.dev/projects/52960167-531a-47a8-a081-b72e0bb3b7fb
+<div align="center">
+  <img src="public/ziip.png" alt="Ziip Game Preview" width="1200">
+</div>
 
-## How can I edit this code?
+## 🎯 Features
 
-There are several ways of editing your application.
+- Minimalist and elegant design
+- Smooth path drawing with beautiful animations
+- Responsive layout for both desktop and mobile
+- Progressive difficulty levels
+- Touch-friendly interface
 
-**Use Lovable**
+## 🚀 Tech Stack
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/52960167-531a-47a8-a081-b72e0bb3b7fb) and start prompting.
+- **Framework**: React + Vite
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS
+- **UI Components**: shadcn/ui
+- **Build Tool**: Vite
 
-Changes made via Lovable will be committed automatically to this repo.
+## 📥 Getting Started
 
-**Use your preferred IDE**
+### Prerequisites
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+Make sure you have Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+### Installation
 
-Follow these steps:
+1. Clone the repository
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
 git clone <YOUR_GIT_URL>
+```
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+2. Navigate to the project directory
 
-# Step 3: Install the necessary dependencies.
-npm i
+```sh
+cd ziip.fun
+```
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+3. Install dependencies
+
+```sh
+npm install
+```
+
+4. Start the development server
+
+```sh
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+The game will be available at `http://localhost:5173`
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## 🎮 How to Play
 
-**Use GitHub Codespaces**
+1. Click or touch a numbered cell to start
+2. Draw a path to another numbered cell
+3. Connect all numbered cells while following these rules:
+   - Paths cannot cross
+   - You cannot go through walls
+   - All numbered cells must be connected
+   - Fill all empty cells with your path
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## 🛠️ Development
 
-## What technologies are used for this project?
+### Available Scripts
 
-This project is built with:
+- `npm run dev` - Start development server
+- `npm run build` - Build for production
+- `npm run preview` - Preview production build
+- `npm run lint` - Run ESLint
+- `npm run type-check` - Run TypeScript type checking
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+## 🚀 Deployment
 
-## How can I deploy this project?
+You can deploy this project in multiple ways:
 
-Simply open [Lovable](https://lovable.dev/projects/52960167-531a-47a8-a081-b72e0bb3b7fb) and click on Share -> Publish.
+1. **Via Lovable**
 
-## Can I connect a custom domain to my Lovable project?
+   - Visit [Lovable Project](https://lovable.dev/projects/52960167-531a-47a8-a081-b72e0bb3b7fb)
+   - Click on Share -> Publish
 
-Yes, you can!
+2. **Custom Domain**
+   - Navigate to Project > Settings > Domains
+   - Click Connect Domain
+   - Follow the [custom domain setup guide](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+## 📝 License
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🤝 Contributing
+
+Contributions are welcome! Feel free to submit a Pull Request.
+
+---
+
+Made with ❤️ using [Lovable](https://lovable.dev)
