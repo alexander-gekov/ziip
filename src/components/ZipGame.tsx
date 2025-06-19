@@ -378,7 +378,7 @@ const ZipGame = () => {
       }))
     );
 
-    const isComplete = checkWinCondition(newGrid);
+    const isComplete = checkWinCondition(newGrid, gameState.currentPath);
 
     setGameState((prev) => ({
       ...prev,
@@ -392,7 +392,7 @@ const ZipGame = () => {
     }
   };
 
-  const checkWinCondition = (grid: Cell[][]): boolean => {
+  const checkWinCondition = (grid: Cell[][], path: string[]): boolean => {
     // Get all numbered cells in order
     const numberedCells = grid
       .flat()
@@ -404,69 +404,27 @@ const ZipGame = () => {
       .flat()
       .every((cell) => cell.isFilled || cell.isNumbered);
 
-    // Check if numbered cells are connected in order
-    for (let i = 0; i < numberedCells.length - 1; i++) {
-      const current = numberedCells[i];
-      const next = numberedCells[i + 1];
+    if (!allCellsFilled || numberedCells.length === 0) return false;
 
-      // Find a path between consecutive numbered cells
-      const pathExists = findPathBetweenCells(grid, current, next);
-      if (!pathExists) return false;
-    }
+    // Get the current path as array of cells
+    const pathCells = path.map((cellId) => {
+      const [row, col] = cellId.split("-").map(Number);
+      return grid[row][col];
+    });
 
-    return allCellsFilled && numberedCells.length > 0;
-  };
-
-  const findPathBetweenCells = (
-    grid: Cell[][],
-    start: Cell,
-    end: Cell
-  ): boolean => {
-    const visited = new Set<string>();
-    const queue: Cell[] = [start];
-    visited.add(start.id);
-
-    while (queue.length > 0) {
-      const current = queue.shift()!;
-      if (current.id === end.id) return true;
-
-      const [row, col] = current.id.split("-").map(Number);
-      const directions = [
-        [-1, 0], // top
-        [1, 0], // bottom
-        [0, -1], // left
-        [0, 1], // right
-      ];
-
-      for (const [dr, dc] of directions) {
-        const newRow = row + dr;
-        const newCol = col + dc;
-
-        if (
-          newRow >= 0 &&
-          newRow < grid.length &&
-          newCol >= 0 &&
-          newCol < grid[0].length
-        ) {
-          const next = grid[newRow][newCol];
-          const hasWall =
-            (dr === -1 && current.walls.top) || // moving up
-            (dr === 1 && current.walls.bottom) || // moving down
-            (dc === -1 && current.walls.left) || // moving left
-            (dc === 1 && current.walls.right); // moving right
-
-          if (
-            !visited.has(next.id) &&
-            (next.isFilled || next.isNumbered) &&
-            !hasWall
-          ) {
-            visited.add(next.id);
-            queue.push(next);
-          }
+    // Check if numbered cells appear in the correct order in the path
+    let numberedCellIndex = 0;
+    for (const cell of pathCells) {
+      if (cell.isNumbered) {
+        if (cell.number !== numberedCells[numberedCellIndex].number) {
+          return false; // Numbers are not in sequence
         }
+        numberedCellIndex++;
       }
     }
-    return false;
+
+    // Check if we found all numbered cells in the path
+    return numberedCellIndex === numberedCells.length;
   };
 
   const getAdjacentCells = (
@@ -618,10 +576,17 @@ const ZipGame = () => {
         }))
       );
 
+      const newPath = [...gameState.currentPath, nextCellId];
+      const isComplete = checkWinCondition(newGrid, newPath);
+      if (isComplete) {
+        setGameState((prev) => ({ ...prev, isComplete: true }));
+        setShowCompletionAnimation(true);
+      }
+
       setGameState((prev) => ({
         ...prev,
         grid: newGrid,
-        currentPath: [...prev.currentPath, nextCellId],
+        currentPath: newPath,
         hintsUsed: prev.hintsUsed + 1,
       }));
 
@@ -630,12 +595,6 @@ const ZipGame = () => {
         toast.info(`Connected to number ${nextCellInPath.number}!`);
       } else {
         toast.info("Added the next cell in the path!");
-      }
-
-      const isComplete = checkWinCondition(newGrid);
-      if (isComplete) {
-        setGameState((prev) => ({ ...prev, isComplete: true }));
-        setShowCompletionAnimation(true);
       }
     } else {
       toast.info("You're at the end of the path!");
