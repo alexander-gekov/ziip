@@ -1,14 +1,17 @@
-# Dependencies
-node_modules
-.pnpm-store
+# Node modules everywhere
+node_modules/
+**/node_modules/
+**/node_modules/**
+.pnpm-store/
 
 # Build output
-dist
-.output
-.nuxt
-.nitro
-.cache
-build
+dist/
+*/dist/
+**/.output
+**/.nuxt
+**/.nitro
+**/.cache
+**/build
 
 # Logs
 logs
@@ -36,22 +39,21 @@ pnpm-debug.log*
 *.sw?
 
 # Testing
-coverage
-.nyc_output
+coverage/
+.nyc_output/
 
 # Temporary files
 *.tmp
 *.temp
-.temp
-.tmp
+.temp/
+.tmp/
 
-# Nuxt
-.nuxt
-.nitro
-.cache
-.output
+# Nuxt specific
+**/.nuxt/
+**/.nitro/
+**/.output/
 .env
-dist
+dist/
 
-# Vite
+# Vite specific
 *.local 
