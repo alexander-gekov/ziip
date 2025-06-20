@@ -1,3 +1,5 @@
+import tailwindcss from "@tailwindcss/vite";
+
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
   compatibilityDate: "2025-05-15",
@@ -6,7 +8,7 @@ export default defineNuxtConfig({
     strict: true,
     typeCheck: true,
   },
-  modules: ["@pinia/nuxt", "@nuxtjs/tailwindcss"],
+  modules: ["@pinia/nuxt", "shadcn-nuxt"],
   app: {
     head: {
       title: "Ziip | Connect the dots",
@@ -17,5 +19,20 @@ export default defineNuxtConfig({
         },
       ],
     },
+  },
+  shadcn: {
+    /**
+     * Prefix for all the imported component
+     */
+    prefix: "",
+    /**
+     * Directory that the component lives in.
+     * @default "./components/ui"
+     */
+    componentDir: "./components/ui",
+  },
+  css: ["~/assets/css/tailwind.css"],
+  vite: {
+    plugins: [tailwindcss() as any],
   },
 });
