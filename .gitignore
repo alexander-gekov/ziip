@@ -1,17 +1,28 @@
-# Node modules everywhere
+# Node dependencies
+node_modules
 node_modules/
+*/node_modules
+*/node_modules/
+**/node_modules
 **/node_modules/
-**/node_modules/**
+**/node_modules/**/*
 .pnpm-store/
+
 
 # Build output
 dist/
 */dist/
-**/.output
-**/.nuxt
-**/.nitro
-**/.cache
-**/build
+**/dist/
+.output/
+**/.output/
+.nuxt/
+**/.nuxt/
+.nitro/
+**/.nitro/
+.cache/
+**/.cache/
+build/
+**/build/
 
 # Logs
 logs
@@ -56,4 +67,4 @@ coverage/
 dist/
 
 # Vite specific
-*.local 
+*.local
