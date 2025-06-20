@@ -1,0 +1,1 @@
+import{p as e,J as n,a3 as t}from"./vendor/json-editor-vue-pb6xqf2y.js";const a={"h-screen":"","w-screen":"","bg-black":""},r=e({__name:"__blank",setup(c){return(o,s)=>(t(),n("div",a))}});export{r as default};
