@@ -87,9 +87,6 @@ importers:
       typescript:
         specifier: ^5.8.3
         version: 5.8.3
-      vue-tsc:
-        specifier: ~2.2.10
-        version: 2.2.10(typescript@5.8.3)
 
   apps/vite:
     dependencies:
@@ -7914,12 +7911,14 @@ snapshots:
   '@volar/language-core@2.4.14':
     dependencies:
       '@volar/source-map': 2.4.14
+    optional: true
 
   '@volar/source-map@1.11.1':
     dependencies:
       muggle-string: 0.3.1
 
-  '@volar/source-map@2.4.14': {}
+  '@volar/source-map@2.4.14':
+    optional: true
 
   '@volar/typescript@1.11.1':
     dependencies:
@@ -7931,6 +7930,7 @@ snapshots:
       '@volar/language-core': 2.4.14
       path-browserify: 1.0.1
       vscode-uri: 3.1.0
+    optional: true
 
   '@vue-macros/common@1.16.1(vue@3.5.17(typescript@5.8.3))':
     dependencies:
@@ -8006,6 +8006,7 @@ snapshots:
     dependencies:
       de-indent: 1.0.2
       he: 1.2.0
+    optional: true
 
   '@vue/devtools-api@6.6.4': {}
 
@@ -8051,6 +8052,7 @@ snapshots:
       path-browserify: 1.0.1
     optionalDependencies:
       typescript: 5.8.3
+    optional: true
 
   '@vue/reactivity@3.5.17':
     dependencies:
@@ -8178,7 +8180,8 @@ snapshots:
       json-schema-traverse: 0.4.1
       uri-js: 4.4.1
 
-  alien-signals@1.0.13: {}
+  alien-signals@1.0.13:
+    optional: true
 
   ansi-regex@5.0.1: {}
 
@@ -8635,7 +8638,8 @@ snapshots:
 
   db0@0.3.2: {}
 
-  de-indent@1.0.2: {}
+  de-indent@1.0.2:
+    optional: true
 
   debug@4.4.1:
     dependencies:
@@ -9248,7 +9252,8 @@ snapshots:
     dependencies:
       function-bind: 1.1.2
 
-  he@1.2.0: {}
+  he@1.2.0:
+    optional: true
 
   hookable@5.5.3: {}
 
@@ -9712,7 +9717,8 @@ snapshots:
 
   muggle-string@0.3.1: {}
 
-  muggle-string@0.4.1: {}
+  muggle-string@0.4.1:
+    optional: true
 
   mz@2.7.0:
     dependencies:
@@ -11461,6 +11467,7 @@ snapshots:
       '@volar/typescript': 2.4.14
       '@vue/language-core': 2.2.10(typescript@5.8.3)
       typescript: 5.8.3
+    optional: true
 
   vue@3.5.17(typescript@5.8.3):
     dependencies:

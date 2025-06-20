@@ -31,6 +31,9 @@ export default defineNuxtConfig({
      */
     componentDir: "./components/ui",
   },
+  imports: {
+    autoImport: true,
+  },
   css: ["~/assets/css/tailwind.css"],
   vite: {
     plugins: [tailwindcss() as any],

@@ -35,7 +35,6 @@
   },
   "devDependencies": {
     "@volar/typescript": "^1.11.1",
-    "typescript": "^5.8.3",
-    "vue-tsc": "~2.2.10"
+    "typescript": "^5.8.3"
   }
 }
