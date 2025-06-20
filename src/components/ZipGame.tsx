@@ -814,6 +814,7 @@ const ZipGame = () => {
           onAnimationComplete={handleAnimationComplete}
           colors={gameColors}
           timeElapsed={timeElapsed}
+          onNewGame={handleNewGame}
         />
       </div>
     </ErrorBoundary>

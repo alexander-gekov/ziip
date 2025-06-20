@@ -15,6 +15,7 @@ interface CompletionAnimationProps {
   onAnimationComplete: () => void;
   colors: GameColors;
   timeElapsed: number;
+  onNewGame: () => void;
 }
 
 export const CompletionAnimation: React.FC<CompletionAnimationProps> = ({
@@ -22,6 +23,7 @@ export const CompletionAnimation: React.FC<CompletionAnimationProps> = ({
   onAnimationComplete,
   colors,
   timeElapsed,
+  onNewGame,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [hasShown, setHasShown] = useState(false);
@@ -128,6 +130,18 @@ export const CompletionAnimation: React.FC<CompletionAnimationProps> = ({
               <p className="text-sm text-gray-500">
                 You've successfully connected all the dots! 🔗
               </p>
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  onNewGame();
+                  handleClose();
+                }}
+                className="w-full py-3 px-4 rounded-lg font-semibold text-white transition-all duration-200 hover:opacity-90 active:scale-95"
+                style={{
+                  backgroundImage: `linear-gradient(to right, ${colors.start}, ${colors.end})`,
+                }}>
+                New Game
+              </button>
             </div>
           </DialogHeader>
         </DialogContent>

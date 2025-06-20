@@ -259,17 +259,13 @@ export const GameGrid: React.FC<GameGridProps> = ({
               stroke-dasharray: ${pathLength * 0.4};
               filter: blur(0px);
             }
-            70% {
-              stroke-width: ${Math.min(
-                cellSize * 0.5,
-                Math.max(16, 35 / (gridSize / 5))
-              )}px;
-            }
             100% {
               stroke-width: ${Math.min(
-                cellSize * 0.4,
-                Math.max(14, 30 / (gridSize / 5))
+                cellSize * 0.5,
+                Math.max(16, 40 / (gridSize / 5))
               )}px;
+              stroke-dasharray: ${pathLength};
+              filter: blur(0px);
             }
           }
 
@@ -358,8 +354,8 @@ export const GameGrid: React.FC<GameGridProps> = ({
               stroke="url(#pathGradient)"
               strokeWidth={
                 isDrawing
-                  ? Math.min(cellSize * 0.2, Math.max(8, 15 / (gridSize / 5)))
-                  : Math.min(cellSize * 0.4, Math.max(10, 30 / (gridSize / 5)))
+                  ? Math.min(cellSize * 0.3, Math.max(14, 22 / (gridSize / 5)))
+                  : Math.min(cellSize * 0.5, Math.max(16, 40 / (gridSize / 5)))
               }
               fill="none"
               strokeLinecap="round"
@@ -384,8 +380,8 @@ export const GameGrid: React.FC<GameGridProps> = ({
               stroke="url(#pathGradient)"
               strokeWidth={
                 isDrawing
-                  ? Math.min(cellSize * 0.2, Math.max(6, 15 / (gridSize / 5)))
-                  : Math.min(cellSize * 0.4, Math.max(10, 30 / (gridSize / 5)))
+                  ? Math.min(cellSize * 0.3, Math.max(12, 22 / (gridSize / 5)))
+                  : Math.min(cellSize * 0.5, Math.max(16, 40 / (gridSize / 5)))
               }
               fill="none"
               strokeLinecap="round"
