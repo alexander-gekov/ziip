@@ -76,33 +76,6 @@ const handleClose = () => {
 
   <Dialog :open="isOpen" @update:open="handleClose">
     <DialogContent class="sm:max-w-md">
-      <div
-        class="absolute -top-8 left-0 right-0 overflow-hidden pointer-events-none">
-        <div
-          v-for="i in 4"
-          :key="`firework-${i}`"
-          class="animate-firework"
-          :style="{
-            position: 'relative',
-            left: `${25 + i * 15}%`,
-            marginTop: `${10 + (i % 2) * 5}%`,
-            animationDelay: `${i * 0.2}s`,
-          }">
-          <div
-            v-for="j in 8"
-            :key="`spark-${j}`"
-            class="absolute w-1 h-1 rounded-full animate-spark"
-            :class="{
-              'bg-yellow-300': j % 2 === 0,
-              'bg-orange-300': j % 2 !== 0,
-            }"
-            :style="{
-              transform: `rotate(${j * 45}deg) translateX(15px)`,
-              animationDelay: `${j * 0.1}s`,
-            }" />
-        </div>
-      </div>
-
       <DialogHeader class="text-center sm:text-center">
         <div class="relative mb-6 mx-auto">
           <div class="text-7xl animate-bounce-slow">🎉</div>
@@ -144,50 +117,8 @@ const handleClose = () => {
 </template>
 
 <style scoped>
-.animate-firework {
-  animation: firework 2s ease-out forwards;
-}
-
-.animate-spark {
-  animation: spark 1s ease-out forwards;
-}
-
 .animate-bounce-slow {
   animation: bounce 2s infinite;
-}
-
-.animate-gradient {
-  animation: gradient 3s ease infinite;
-}
-
-@keyframes firework {
-  0% {
-    transform: scale(0);
-    opacity: 0;
-  }
-  50% {
-    transform: scale(1);
-    opacity: 1;
-  }
-  100% {
-    transform: scale(1.2);
-    opacity: 0;
-  }
-}
-
-@keyframes spark {
-  0% {
-    transform: scale(0) rotate(0deg);
-    opacity: 0;
-  }
-  50% {
-    transform: scale(1) rotate(180deg);
-    opacity: 1;
-  }
-  100% {
-    transform: scale(0) rotate(360deg);
-    opacity: 0;
-  }
 }
 
 @keyframes bounce {
@@ -199,18 +130,6 @@ const handleClose = () => {
   50% {
     transform: translateY(0);
     animation-timing-function: cubic-bezier(0, 0, 0.2, 1);
-  }
-}
-
-@keyframes gradient {
-  0% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-  100% {
-    background-position: 0% 50%;
   }
 }
 </style>

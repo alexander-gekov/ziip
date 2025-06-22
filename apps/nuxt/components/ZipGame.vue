@@ -756,7 +756,7 @@ const animateSolution = () => {
       </div>
 
       <!-- Game Grid -->
-      <div class="w-full aspect-square">
+      <div v-if="gameState.grid.length > 0" class="w-full aspect-square">
         <GameGrid
           :grid="gameState.grid"
           :current-path="gameState.currentPath"
@@ -768,6 +768,9 @@ const animateSolution = () => {
           :is-complete="gameState.isComplete"
           :show-completion-animation="showCompletionAnimation"
           :colors="gameColors" />
+      </div>
+      <div v-else class="flex items-center min-h-48 justify-center h-full">
+        <LucideLoader2 class="w-10 h-10 animate-spin" />
       </div>
 
       <!-- Game Controls -->
