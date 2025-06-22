@@ -242,8 +242,8 @@ const generateHamiltonianPath = (
 
       if (dfs(nxt)) return true;
 
-      visited.delete(key(nxt));
       path.pop();
+      visited.delete(key(nxt));
       clearNeighborCache(nxt);
       retries++;
     }
@@ -251,9 +251,8 @@ const generateHamiltonianPath = (
     return false;
   };
 
-  if (dfs(start)) return path;
-
-  return null;
+  const result = dfs(start);
+  return result ? path : null;
 };
 
 const isGoodCheckpointPosition = (
@@ -267,32 +266,20 @@ const selectCheckpoints = (
   dotCount: number,
   minSpacing: number
 ): Array<[number, number]> => {
-  const checkpoints: Array<[number, number]> = [path[0]];
-  const pathLength = path.length;
-  const step = Math.floor(pathLength / (dotCount - 1));
+  const cps: Array<[number, number]> = [path[0]];
+  const seg = Math.floor(path.length / (dotCount - 1));
 
-  for (let i = 1; i < dotCount - 1; i++) {
-    let pos = path[i * step];
-    let offset = 0;
-    let found = false;
-
-    while (offset < step && !found) {
-      if (isGoodCheckpointPosition(pos, checkpoints[i - 1], minSpacing)) {
-        checkpoints.push(pos);
-        found = true;
-      } else {
-        offset++;
-        pos = path[i * step + offset];
-      }
-    }
-
-    if (!found) {
-      checkpoints.push(pos);
-    }
+  for (let i = 1; i < dotCount - 1; ++i) {
+    let idx = i * seg;
+    while (
+      idx < path.length - 1 &&
+      !isGoodCheckpointPosition(path[idx], cps[cps.length - 1], minSpacing)
+    )
+      ++idx;
+    cps.push(path[idx]);
   }
-
-  checkpoints.push(path[pathLength - 1]);
-  return checkpoints;
+  cps.push(path[path.length - 1]);
+  return cps;
 };
 
 const isUniqueSolution = (
@@ -301,34 +288,31 @@ const isUniqueSolution = (
   walls: Wall[] = []
 ): boolean => {
   const visited = new Set<string>();
-  let solutionCount = 0;
+  let count = 0;
 
   const dfs = (pos: [number, number], targetIdx: number) => {
-    if (solutionCount > 1) return;
+    if (count > 1) return;
 
-    if (
-      pos[0] === checkpoints[targetIdx][0] &&
-      pos[1] === checkpoints[targetIdx][1]
-    ) {
-      if (targetIdx === checkpoints.length - 1) {
-        solutionCount++;
+    const target = checkpoints[targetIdx];
+    if (pos[0] === target[0] && pos[1] === target[1]) {
+      if (++targetIdx === checkpoints.length) {
+        ++count;
         return;
       }
-      targetIdx++;
     }
 
-    const neighbors = getUnvisitedNeighbors(pos, gridSize, visited, walls);
-    for (const nxt of neighbors) {
+    const moves = getUnvisitedNeighbors(pos, gridSize, visited, walls);
+    for (const nxt of moves) {
       visited.add(key(nxt));
       dfs(nxt, targetIdx);
       visited.delete(key(nxt));
+      if (count > 1) return;
     }
   };
 
   visited.add(key(checkpoints[0]));
-  dfs(checkpoints[0], 1);
-
-  return solutionCount === 1;
+  dfs(checkpoints[0], 0);
+  return count === 1;
 };
 
 const generateWalls = (
@@ -339,72 +323,105 @@ const generateWalls = (
   rnd: SeededRandom
 ): Wall[] => {
   const walls: Wall[] = [];
-  const solutionPathSet = new Set(solutionPath.map(key));
+  const solutionPathSet = new Set(solutionPath.map(([r, c]) => `${r},${c}`));
+  const numberedCellsSet = new Set(
+    numberedCells.map((cell) => `${cell.row},${cell.col}`)
+  );
 
   const wouldBlockSolution = (
     cell1: [number, number],
     cell2: [number, number]
   ): boolean => {
-    const cell1Key = key(cell1);
-    const cell2Key = key(cell2);
-
-    for (let i = 0; i < solutionPath.length - 1; i++) {
-      const currentKey = key(solutionPath[i]);
-      const nextKey = key(solutionPath[i + 1]);
-
-      if (
-        (currentKey === cell1Key && nextKey === cell2Key) ||
-        (currentKey === cell2Key && nextKey === cell1Key)
-      ) {
-        return true;
-      }
+    const cell1Key = `${cell1[0]},${cell1[1]}`;
+    const cell2Key = `${cell2[0]},${cell2[1]}`;
+    if (!solutionPathSet.has(cell1Key) || !solutionPathSet.has(cell2Key)) {
+      return false;
     }
 
-    return false;
+    const pos1 = solutionPath.findIndex(
+      ([r, c]) => r === cell1[0] && c === cell1[1]
+    );
+    const pos2 = solutionPath.findIndex(
+      ([r, c]) => r === cell2[0] && c === cell2[1]
+    );
+
+    return Math.abs(pos1 - pos2) === 1;
   };
 
   const wouldBlockNumberedCell = (
     cell1: [number, number],
     cell2: [number, number]
   ): boolean => {
-    const isNumberedCell = (pos: [number, number]): boolean => {
-      return numberedCells.some((nc) => nc.row === pos[0] && nc.col === pos[1]);
-    };
-
-    return isNumberedCell(cell1) || isNumberedCell(cell2);
+    return (
+      numberedCellsSet.has(`${cell1[0]},${cell1[1]}`) ||
+      numberedCellsSet.has(`${cell2[0]},${cell2[1]}`)
+    );
   };
 
-  const potentialWalls: Array<[number, number, number, number]> = [];
+  let attempts = 0;
+  const maxAttempts = gridSize * gridSize * 4;
 
-  for (let row = 0; row < gridSize; row++) {
-    for (let col = 0; col < gridSize; col++) {
-      if (col < gridSize - 1) {
-        potentialWalls.push([row, col, row, col + 1]);
-      }
-      if (row < gridSize - 1) {
-        potentialWalls.push([row, col, row + 1, col]);
-      }
+  while (walls.length < config.wallCount && attempts < maxAttempts) {
+    attempts++;
+
+    if (config.difficulty === "easy" && rnd.next() > config.wallProbability) {
+      continue;
     }
-  }
 
-  shuffleInPlace(potentialWalls, rnd);
+    const row = rnd.nextInt(0, gridSize - 1);
+    const col = rnd.nextInt(0, gridSize - 1);
 
-  let wallsAdded = 0;
-  for (const [row1, col1, row2, col2] of potentialWalls) {
-    if (wallsAdded >= config.wallCount) break;
+    const direction = rnd.nextInt(0, 2);
 
-    const cell1: [number, number] = [row1, col1];
-    const cell2: [number, number] = [row2, col2];
+    if (direction < 1 && col < gridSize - 1) {
+      const cell1: [number, number] = [row, col];
+      const cell2: [number, number] = [row, col + 1];
 
-    if (
-      !wouldBlockSolution(cell1, cell2) &&
-      !wouldBlockNumberedCell(cell1, cell2) &&
-      rnd.next() < config.wallProbability
-    ) {
-      const testWalls = [...walls, { cell1, cell2 }];
-      if (isUniqueSolution(gridSize, solutionPath, testWalls)) {
-        walls.push({ cell1, cell2 });
-        wallsAdded++;
+      if (
+        !wouldBlockSolution(cell1, cell2) &&
+        !wouldBlockNumberedCell(cell1, cell2)
+      ) {
+        const wall = { cell1, cell2 };
+        if (
+          !walls.some(
+            (w) =>
+              (w.cell1[0] === wall.cell1[0] &&
+                w.cell1[1] === wall.cell1[1] &&
+                w.cell2[0] === wall.cell2[0] &&
+                w.cell2[1] === wall.cell2[1]) ||
+              (w.cell1[0] === wall.cell2[0] &&
+                w.cell1[1] === wall.cell2[1] &&
+                w.cell2[0] === wall.cell1[0] &&
+                w.cell2[1] === wall.cell1[1])
+          )
+        ) {
+          walls.push(wall);
+        }
+      }
+    } else if (direction >= 1 && row < gridSize - 1) {
+      const cell1: [number, number] = [row, col];
+      const cell2: [number, number] = [row + 1, col];
+
+      if (
+        !wouldBlockSolution(cell1, cell2) &&
+        !wouldBlockNumberedCell(cell1, cell2)
+      ) {
+        const wall = { cell1, cell2 };
+        if (
+          !walls.some(
+            (w) =>
+              (w.cell1[0] === wall.cell1[0] &&
+                w.cell1[1] === wall.cell1[1] &&
+                w.cell2[0] === wall.cell2[0] &&
+                w.cell2[1] === wall.cell2[1]) ||
+              (w.cell1[0] === wall.cell2[0] &&
+                w.cell1[1] === wall.cell2[1] &&
+                w.cell2[0] === wall.cell1[0] &&
+                w.cell2[1] === wall.cell1[1])
+          )
+        ) {
+          walls.push(wall);
+        }
       }
     }
   }
@@ -417,51 +434,64 @@ export const generateLevel = (
   seed?: number,
   maxAttempts: number = 5
 ): Level => {
-  const config = DIFFICULTY_CONFIGS[difficulty];
-  const finalSeed = seed ?? Math.floor(Math.random() * 1000000);
-  const rnd = new SeededRandom(finalSeed);
+  const cfg = DIFFICULTY_CONFIGS[difficulty];
+  let realSeed = seed ?? Date.now();
+  let attempts = 0;
 
-  for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    const path = generateHamiltonianPath(config.gridSize, rnd);
-    if (!path) continue;
+  while (attempts < maxAttempts) {
+    try {
+      const rnd = new SeededRandom(realSeed);
+      const path = generateHamiltonianPath(cfg.gridSize, rnd, 1000);
 
-    const dotCount = rnd.nextInt(config.minDotCount, config.maxDotCount);
-    const checkpoints = selectCheckpoints(path, dotCount, config.minSpacing);
+      if (!path) {
+        attempts++;
+        realSeed = Date.now();
+        continue;
+      }
 
-    const numberedCells: NumberedCell[] = checkpoints.map((pos, idx) => ({
-      row: pos[0],
-      col: pos[1],
-      number: idx + 1,
-    }));
+      const dotCount = rnd.nextInt(cfg.minDotCount, cfg.maxDotCount);
+      const spacing = Math.floor((path.length - 1) / (dotCount - 1));
+      const numberedPath = Array.from(
+        { length: dotCount - 1 },
+        (_, i) => path[i * spacing]
+      ).concat([path[path.length - 1]]);
 
-    const walls = generateWalls(
-      config.gridSize,
-      path,
-      numberedCells,
-      config,
-      rnd
-    );
+      const numberedCells = numberedPath.map(([r, c], i) => ({
+        row: r,
+        col: c,
+        number: i + 1,
+      }));
 
-    return {
-      gridSize: config.gridSize,
-      numberedCells,
-      difficulty,
-      solutionPath: path,
-      seed: finalSeed,
-      walls,
-    };
+      const walls = generateWalls(cfg.gridSize, path, numberedCells, cfg, rnd);
+
+      return {
+        gridSize: cfg.gridSize,
+        numberedCells,
+        solutionPath: path,
+        difficulty,
+        seed: realSeed,
+        walls,
+      };
+    } catch (error) {
+      attempts++;
+      realSeed = Date.now();
+
+      if (attempts >= maxAttempts) {
+        throw new Error(
+          `Failed to generate level after ${maxAttempts} attempts`
+        );
+      }
+    }
   }
 
-  throw new Error(
-    `Failed to generate a valid level after ${maxAttempts} attempts`
-  );
+  throw new Error(`Failed to generate level after ${maxAttempts} attempts`);
 };
 
 export const generateDailyLevel = (): Level => {
-  const date = new Date();
+  const today = new Date();
   const seed =
-    date.getFullYear() * 10000 + date.getMonth() * 100 + date.getDate();
-  return generateLevel("medium", seed);
+    today.getDate() + today.getMonth() * 31 + today.getFullYear() * 365;
+  return generateLevel("easy", seed);
 };
 
 export const generateRandomLevel = (

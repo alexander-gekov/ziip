@@ -4,7 +4,7 @@ import "vue-sonner/style.css";
 </script>
 
 <template>
-  <div>
+  <div class="flex flex-col min-h-screen">
     <NuxtPage />
     <Toaster />
   </div>

@@ -8,7 +8,7 @@ export default defineNuxtConfig({
     strict: true,
     typeCheck: true,
   },
-  modules: ["@pinia/nuxt", "shadcn-nuxt"],
+  modules: ["@pinia/nuxt", "shadcn-nuxt", "@vueuse/nuxt", "nuxt-lucide-icons"],
   app: {
     head: {
       title: "Ziip | Connect the dots",
@@ -33,6 +33,7 @@ export default defineNuxtConfig({
   },
   imports: {
     autoImport: true,
+    dirs: ["components", "composables", "utils"],
   },
   css: ["~/assets/css/tailwind.css"],
   vite: {

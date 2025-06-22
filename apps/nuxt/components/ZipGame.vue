@@ -3,12 +3,13 @@ import { toast } from "vue-sonner";
 import {
   generateDailyLevel,
   generateRandomLevel,
+  type Level,
+  type NumberedCell,
+  type Wall,
 } from "~/utils/levelGenerator";
-import { generateGameColors } from "~/composables/useGameColors";
-import type {
-  Level,
-  NumberedCell,
-  GameColors,
+import {
+  generateGameColors,
+  type GameColors,
 } from "~/composables/useGameColors";
 import GameGrid from "./GameGrid.vue";
 import GameControls from "./GameControls.vue";
@@ -16,7 +17,7 @@ import GameInstructions from "./GameInstructions.vue";
 import CompletionAnimation from "./CompletionAnimation.vue";
 import { Button } from "~/components/ui/button";
 
-interface Cell {
+export interface Cell {
   id: string;
   row: number;
   col: number;
@@ -34,7 +35,7 @@ interface Cell {
   };
 }
 
-interface GameState {
+export interface GameState {
   grid: Cell[][];
   currentPath: string[];
   isDrawing: boolean;
@@ -44,6 +45,13 @@ interface GameState {
   solutionPath: Array<[number, number]>;
 }
 
+const formatTime = (seconds: number): string => {
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${mins}:${secs.toString().padStart(2, "0")}`;
+};
+
+// State management
 const gameState = ref<GameState>({
   grid: [],
   currentPath: [],
@@ -62,20 +70,12 @@ const timeElapsed = ref(0);
 const isTimerRunning = ref(false);
 const gameColors = ref<GameColors>(generateGameColors());
 
-const formatTime = (seconds: number): string => {
-  const mins = Math.floor(seconds / 60);
-  const secs = seconds % 60;
-  return `${mins}:${secs.toString().padStart(2, "0")}`;
-};
-
 // Timer effect
-let timerInterval: NodeJS.Timeout | undefined;
-
+let timerInterval: NodeJS.Timeout | null = null;
 watch(
   [isTimerRunning, () => gameState.value.isComplete],
   ([running, complete]: [boolean, boolean]) => {
     if (timerInterval) clearInterval(timerInterval);
-
     if (running && !complete) {
       timerInterval = setInterval(() => {
         timeElapsed.value++;
@@ -86,6 +86,23 @@ watch(
 
 onUnmounted(() => {
   if (timerInterval) clearInterval(timerInterval);
+});
+
+// Initialize game with daily level
+onMounted(() => {
+  try {
+    const level = generateDailyLevel();
+    gridSize.value = level.gridSize;
+    difficulty.value = level.difficulty;
+    initializeGrid(level);
+  } catch (error) {
+    console.error("Failed to generate level:", error);
+    // Fallback to easy level if daily generation fails
+    const level = generateRandomLevel("easy");
+    gridSize.value = level.gridSize;
+    difficulty.value = level.difficulty;
+    initializeGrid(level);
+  }
 });
 
 const initializeGrid = (level: Level) => {
@@ -506,7 +523,7 @@ const handleHint = () => {
   const currentPathCoords = gameState.value.currentPath.map(
     (cellId: string) => {
       const [row, col] = cellId.split("-").map(Number);
-      return [row, col];
+      return [row, col] as [number, number];
     }
   );
 
@@ -648,11 +665,13 @@ const handleNewGame = () => {
     timeElapsed.value = 0;
     isTimerRunning.value = false;
     toast.success(`New ${newDifficulty} game started!`);
+    console.log(level);
   } catch (error) {
     console.error("Failed to generate level:", error);
     toast.error("Failed to start a new game. Please try again.");
     // Fallback to easy level if random generation fails
     const level = generateRandomLevel("easy");
+    console.log(level);
     gridSize.value = level.gridSize;
     difficulty.value = "easy";
     initializeGrid(level);
@@ -672,8 +691,8 @@ const animateSolution = () => {
         .slice(0, index)
         .map(([row, col]: [number, number]) => `${row}-${col}`);
 
-      const newGrid = gameState.value.grid.map((gridRow: Cell[]) =>
-        gridRow.map((cell: Cell) => ({
+      const newGrid = gameState.value.grid.map((row: Cell[]) =>
+        row.map((cell: Cell) => ({
           ...cell,
           isFilled: currentPath.includes(cell.id),
           isPath: currentPath.includes(cell.id),
@@ -701,23 +720,6 @@ const animateSolution = () => {
   };
   setTimeout(revealStep, 100);
 };
-
-// Initialize game with daily level
-onMounted(() => {
-  try {
-    const level = generateDailyLevel();
-    gridSize.value = level.gridSize;
-    difficulty.value = level.difficulty;
-    initializeGrid(level);
-  } catch (error) {
-    console.error("Failed to generate level:", error);
-    // Fallback to easy level if daily generation fails
-    const level = generateRandomLevel("easy");
-    gridSize.value = level.gridSize;
-    difficulty.value = "easy";
-    initializeGrid(level);
-  }
-});
 </script>
 
 <template>
@@ -759,13 +761,13 @@ onMounted(() => {
           :grid="gameState.grid"
           :current-path="gameState.currentPath"
           :is-drawing="gameState.isDrawing"
+          @mouseDown="handleMouseDown"
+          @mouseMove="handleMouseMove"
+          @mouseUp="handleMouseUp"
+          @mouseLeave="handleMouseLeave"
           :is-complete="gameState.isComplete"
           :show-completion-animation="showCompletionAnimation"
-          :colors="gameColors"
-          @mouse-down="handleMouseDown"
-          @mouse-move="handleMouseMove"
-          @mouse-up="handleMouseUp"
-          @mouse-leave="handleMouseLeave" />
+          :colors="gameColors" />
       </div>
 
       <!-- Game Controls -->
@@ -781,16 +783,16 @@ onMounted(() => {
 
       <!-- New Game Button -->
       <Button
-        class="w-full bg-gray-800 hover:bg-gray-900 text-white py-1 rounded-xl font-medium"
-        @click="handleNewGame">
+        @click="handleNewGame"
+        class="w-full bg-gray-800 hover:bg-gray-900 text-white py-1 rounded-xl font-medium">
         New Game
       </Button>
 
       <!-- Solve Button -->
       <Button
+        @click="animateSolution"
         class="w-full text-white py-1 rounded-xl font-medium opacity-80 hover:opacity-100"
-        :style="{ background: gameColors.end }"
-        @click="animateSolution">
+        :style="{ background: gameColors.end }">
         Solve
       </Button>
     </div>
@@ -800,7 +802,8 @@ onMounted(() => {
       :is-complete="gameState.isComplete"
       :colors="gameColors"
       :time-elapsed="timeElapsed"
-      @animation-complete="handleAnimationComplete"
-      @new-game="handleNewGame" />
+      @animationComplete="handleAnimationComplete"
+      @newGame="handleNewGame"
+      :on-new-game="handleNewGame" />
   </div>
 </template>

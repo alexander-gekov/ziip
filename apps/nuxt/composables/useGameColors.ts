@@ -1,4 +1,4 @@
-import type { Level, NumberedCell } from "~/utils/levelGenerator";
+import type { Level, NumberedCell } from "../utils/levelGenerator";
 
 const hslToRgb = (h: number, s: number, l: number) => {
   s /= 100;
@@ -12,47 +12,63 @@ const hslToRgb = (h: number, s: number, l: number) => {
 
 export type GameColors = ReturnType<typeof generateGameColors>;
 
-export const generateGameColors = () => {
-  const baseHue = Math.floor(Math.random() * 360);
-  const saturation = Math.floor(Math.random() * 10 + 85);
-  const baseLightness = Math.floor(Math.random() * 10 + 45);
+// Define color schemes outside the function to ensure they're constant
+const colorSchemes = [
+  {
+    hueSteps: [25, 15, 5],
+    saturationSteps: [85, 90, 95],
+    lightnessSteps: [45, 42, 40],
+    fixed: true,
+    baseHue: 25,
+  },
+  {
+    hueSteps: [0, 15, 30],
+    saturationSteps: [0, 5, 10],
+    lightnessSteps: [0, -5, -10],
+  },
+  {
+    hueSteps: [60, 30, 0],
+    saturationSteps: [0, 5, 10],
+    lightnessSteps: [0, -5, -10],
+  },
+  {
+    hueSteps: [240, 270, 300],
+    saturationSteps: [0, 5, 10],
+    lightnessSteps: [0, -5, -10],
+  },
+  {
+    hueSteps: [120, 90, 60],
+    saturationSteps: [0, 5, 10],
+    lightnessSteps: [0, -5, -10],
+  },
+  {
+    hueSteps: [30, 0, 300],
+    saturationSteps: [0, 5, 10],
+    lightnessSteps: [0, -5, -10],
+  },
+];
 
-  const colorSchemes = [
-    {
-      hueSteps: [25, 15, 5],
-      saturationSteps: [85, 90, 95],
-      lightnessSteps: [45, 42, 40],
-      fixed: true,
-      baseHue: 25,
-    },
-    {
-      hueSteps: [0, 15, 30],
-      saturationSteps: [0, 5, 10],
-      lightnessSteps: [0, -5, -10],
-    },
-    {
-      hueSteps: [60, 30, 0],
-      saturationSteps: [0, 5, 10],
-      lightnessSteps: [0, -5, -10],
-    },
-    {
-      hueSteps: [240, 270, 300],
-      saturationSteps: [0, 5, 10],
-      lightnessSteps: [0, -5, -10],
-    },
-    {
-      hueSteps: [120, 90, 60],
-      saturationSteps: [0, 5, 10],
-      lightnessSteps: [0, -5, -10],
-    },
-    {
-      hueSteps: [30, 0, 300],
-      saturationSteps: [0, 5, 10],
-      lightnessSteps: [0, -5, -10],
-    },
-  ];
+// Generate a deterministic hash from a string
+const hashString = (str: string) => {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = (hash << 5) - hash + char;
+    hash = hash & hash; // Convert to 32-bit integer
+  }
+  return Math.abs(hash);
+};
 
-  const scheme = colorSchemes[Math.floor(Math.random() * colorSchemes.length)];
+export const generateGameColors = (seed?: string) => {
+  // Use the seed to deterministically select a color scheme
+  const hash = seed ? hashString(seed) : Math.floor(Math.random() * 1000000);
+  const schemeIndex = hash % colorSchemes.length;
+  const scheme = colorSchemes[schemeIndex];
+
+  // Use the hash to generate deterministic base values
+  const baseHue = scheme.fixed ? scheme.baseHue : hash % 360;
+  const saturation = scheme.fixed ? 90 : 85 + (hash % 10);
+  const baseLightness = scheme.fixed ? 45 : 45 + (hash % 10);
 
   const colors = scheme.hueSteps.map((hueStep, index) => {
     const hue = scheme.fixed
