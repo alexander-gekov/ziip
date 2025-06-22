@@ -18,6 +18,13 @@ export default defineNuxtConfig({
           content: "Ziip: Open-source clone of LinkedIn's Zip Game",
         },
       ],
+      script: [
+        {
+          src: "https://umami-kck0c4csg4gsgo88gwgow8s8.alexandergekov.com/script.js",
+          defer: true,
+          "data-website-id": "37c004c9-de2d-4c36-842d-195e52f05e15",
+        },
+      ],
     },
   },
   shadcn: {
