@@ -123,7 +123,7 @@
 </template>
 
 <script setup lang="ts">
-import type { Cell } from "./ZipGame.vue";
+import type { Cell } from "../types/game";
 
 interface GameGridProps {
   grid: Cell[][];

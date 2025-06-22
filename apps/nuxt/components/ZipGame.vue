@@ -5,7 +5,6 @@ import {
   generateRandomLevel,
   type Level,
   type NumberedCell,
-  type Wall,
 } from "~/utils/levelGenerator";
 import {
   generateGameColors,
@@ -15,41 +14,8 @@ import GameGrid from "./GameGrid.vue";
 import GameControls from "./GameControls.vue";
 import GameInstructions from "./GameInstructions.vue";
 import CompletionAnimation from "./CompletionAnimation.vue";
-import { Button } from "~/components/ui/button";
-
-export interface Cell {
-  id: string;
-  row: number;
-  col: number;
-  isNumbered: boolean;
-  number?: number;
-  isFilled: boolean;
-  isPath: boolean;
-  isConnected: boolean;
-  isHighlighted?: boolean;
-  walls: {
-    top: boolean;
-    right: boolean;
-    bottom: boolean;
-    left: boolean;
-  };
-}
-
-export interface GameState {
-  grid: Cell[][];
-  currentPath: string[];
-  isDrawing: boolean;
-  isComplete: boolean;
-  moves: number;
-  hintsUsed: number;
-  solutionPath: Array<[number, number]>;
-}
-
-const formatTime = (seconds: number): string => {
-  const mins = Math.floor(seconds / 60);
-  const secs = seconds % 60;
-  return `${mins}:${secs.toString().padStart(2, "0")}`;
-};
+import type { Cell, GameState } from "../types/game";
+import { formatTime } from "../utils/format";
 
 // State management
 const gameState = ref<GameState>({
@@ -442,31 +408,6 @@ const checkWinCondition = (grid: Cell[][], path: string[]): boolean => {
 
   // Check if we found all numbered cells in the path
   return numberedCellIndex === numberedCells.length;
-};
-
-const getAdjacentCells = (grid: Cell[][], row: number, col: number): Cell[] => {
-  const adjacent: Cell[] = [];
-  const directions = [
-    [-1, 0],
-    [1, 0],
-    [0, -1],
-    [0, 1],
-  ];
-
-  for (const [dr, dc] of directions) {
-    const newRow = row + dr;
-    const newCol = col + dc;
-    if (
-      newRow >= 0 &&
-      newRow < grid.length &&
-      newCol >= 0 &&
-      newCol < grid[0].length
-    ) {
-      adjacent.push(grid[newRow][newCol]);
-    }
-  }
-
-  return adjacent;
 };
 
 const handleAnimationComplete = () => {
