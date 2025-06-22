@@ -1,11 +1,4 @@
 <script setup lang="ts">
-import { Button } from "~/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "~/components/ui/dialog";
 import type { GameColors } from "~/composables/useGameColors";
 import ConfettiExplosion from "vue-confetti-explosion";
 

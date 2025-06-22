@@ -123,9 +123,7 @@
 </template>
 
 <script setup lang="ts">
-import { useWindowSize } from "@vueuse/core";
 import type { Cell } from "./ZipGame.vue";
-import type { GameColors } from "~/composables/useGameColors";
 
 interface GameGridProps {
   grid: Cell[][];
@@ -151,8 +149,7 @@ const emit = defineEmits<{
 const containerRef = useTemplateRef<HTMLDivElement>("containerRef");
 const gridRef = useTemplateRef<HTMLDivElement>("gridRef");
 const pathRef = useTemplateRef<SVGPathElement>("pathRef");
-const cellSize = ref(60);
-const isInitialized = ref(false);
+const isInitialized = ref(true);
 const pathLength = ref(0);
 
 const { width: windowWidth } = useWindowSize();
@@ -161,6 +158,15 @@ const gridSize = computed(() => props.grid.length);
 
 const MIN_CELL_SIZE = computed(() => {
   return windowWidth.value < 768 ? 20 : 40;
+});
+
+const cellSize = computed(() => {
+  const containerWidth = windowWidth.value;
+  const maxGridWidth = Math.min(containerWidth - 32, 600);
+  return Math.max(
+    MIN_CELL_SIZE.value,
+    Math.floor(maxGridWidth / gridSize.value)
+  );
 });
 
 const flattenedGrid = computed(() => {
@@ -246,19 +252,6 @@ const pathData = computed(() => {
   return pathData;
 });
 
-const updateCellSize = () => {
-  if (containerRef.value) {
-    const containerWidth = containerRef.value.clientWidth || windowWidth.value;
-    const maxGridWidth = Math.min(containerWidth - 32, 600);
-    const newCellSize = Math.max(
-      MIN_CELL_SIZE.value,
-      Math.floor(maxGridWidth / gridSize.value)
-    );
-    cellSize.value = newCellSize;
-    isInitialized.value = true;
-  }
-};
-
 // Enhanced touch event handlers
 const handleTouchStart = (e: TouchEvent) => {
   e.preventDefault();
@@ -297,10 +290,6 @@ const handleTouchEnd = (e: TouchEvent) => {
 // Cell styling
 const getCellClasses = (cell: Cell) => {
   const isInCurrentPath = props.currentPath.includes(cell.id);
-  const isPathStart = props.currentPath[0] === cell.id;
-  const isPathEnd =
-    props.currentPath[props.currentPath.length - 1] === cell.id &&
-    props.currentPath.length > 1;
 
   return [
     "aspect-square transition-all duration-300 cursor-pointer relative",
@@ -322,7 +311,6 @@ const getCellClasses = (cell: Cell) => {
 
 const getNumberedCellClasses = (cell: Cell) => {
   const isInCurrentPath = props.currentPath.includes(cell.id);
-  const isPathStart = props.currentPath[0] === cell.id;
 
   return [
     "rounded-full text-white z-30 relative",
@@ -339,10 +327,8 @@ const getNumberedCellClasses = (cell: Cell) => {
 
 // Enhanced touch support setup
 onMounted(() => {
-  updateCellSize();
-
   // Add global touch event listeners to prevent scrolling during game interaction
-  if (process.client && gridRef.value) {
+  if (gridRef.value) {
     const grid = gridRef.value;
 
     // Prevent default touch behaviors that might interfere with the game
@@ -365,8 +351,6 @@ onMounted(() => {
     });
   }
 });
-
-watch([windowWidth, () => props.grid], updateCellSize, { immediate: true });
 
 watch(
   () => props.currentPath,

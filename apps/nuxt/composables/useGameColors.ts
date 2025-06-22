@@ -98,8 +98,76 @@ export const generateGameColors = (seed?: string) => {
   };
 };
 
-export const useGameColors = (colors: GameColors) => {
-  return colors;
+export const useGameColors = (initialSeed?: string) => {
+  const seed = ref(initialSeed);
+  const colors = ref<GameColors>(generateGameColors(initialSeed));
+  const currentSchemeIndex = ref(0);
+
+  const regenerateColors = (newSeed?: string) => {
+    seed.value = newSeed;
+    colors.value = generateGameColors(newSeed);
+  };
+
+  const cycleColorScheme = () => {
+    currentSchemeIndex.value =
+      (currentSchemeIndex.value + 1) % colorSchemes.length;
+    const scheme = colorSchemes[currentSchemeIndex.value];
+    const baseHue = scheme.fixed
+      ? scheme.baseHue
+      : Math.floor(Math.random() * 360);
+    const hash = Math.floor(Math.random() * 1000000);
+    colors.value = generateGameColors(hash.toString());
+  };
+
+  const getContrastColor = (bgColor: string) => {
+    if (bgColor.startsWith("hsl")) {
+      const [, , lightness] = bgColor.match(/\d+/g)?.map(Number) || [];
+      return Number(lightness) > 50 ? "#000000" : "#ffffff";
+    }
+    return "#000000";
+  };
+
+  const adjustOpacity = (color: string, opacity: number) => {
+    if (color.startsWith("rgba")) {
+      return color.replace(/[\d.]+\)$/, `${opacity})`);
+    }
+    if (color.startsWith("hsl")) {
+      return color.replace("hsl", "hsla").replace(")", `, ${opacity})`);
+    }
+    return color;
+  };
+
+  const darken = (color: string, amount: number) => {
+    if (color.startsWith("hsl")) {
+      const [hue, saturation, lightness] =
+        color.match(/\d+/g)?.map(Number) || [];
+      return `hsl(${hue}, ${saturation}%, ${Math.max(0, lightness - amount)}%)`;
+    }
+    return color;
+  };
+
+  const lighten = (color: string, amount: number) => {
+    if (color.startsWith("hsl")) {
+      const [hue, saturation, lightness] =
+        color.match(/\d+/g)?.map(Number) || [];
+      return `hsl(${hue}, ${saturation}%, ${Math.min(
+        100,
+        lightness + amount
+      )}%)`;
+    }
+    return color;
+  };
+
+  return {
+    colors: readonly(colors),
+    seed: readonly(seed),
+    regenerateColors,
+    cycleColorScheme,
+    getContrastColor,
+    adjustOpacity,
+    darken,
+    lighten,
+  };
 };
 
 export type { Level, NumberedCell };
