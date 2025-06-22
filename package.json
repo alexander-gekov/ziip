@@ -1,0 +1,20 @@
+{
+  "name": "ziip-fun-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev:vite": "pnpm --filter vite dev",
+    "dev:nuxt": "pnpm --filter nuxt dev",
+    "build:vite": "pnpm --filter vite build",
+    "build:nuxt": "pnpm --filter nuxt build",
+    "lint": "pnpm --filter '*' lint",
+    "install:all": "pnpm install"
+  },
+  "workspaces": [
+    "apps/*"
+  ],
+  "devDependencies": {
+    "typescript": "^5.5.3"
+  },
+  "packageManager": "pnpm@9.0.0"
+}

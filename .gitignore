@@ -1,0 +1,106 @@
+# Dependencies
+node_modules
+.pnpm-store/
+
+# Build output
+.nuxt
+dist
+.output
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# IDE
+.idea
+.vscode
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing
+coverage
+
+# Temporary files
+*.tmp
+*.temp
+
+# Node dependencies
+node_modules/
+*/node_modules
+*/node_modules/
+**/node_modules
+**/node_modules/
+**/node_modules/**/*
+
+# Build output
+*/dist/
+**/dist/
+.output/
+**/.output/
+.nuxt/
+**/.nuxt/
+.nitro/
+**/.nitro/
+.cache/
+**/.cache/
+build/
+**/build/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Testing
+.nyc_output/
+
+# Temporary files
+*.tmp
+*.temp
+.temp/
+.tmp/
+
+# Nuxt specific
+**/.nuxt/
+**/.nitro/
+**/.output/
+.env
+dist/
+
+# Vite specific
+*.local
