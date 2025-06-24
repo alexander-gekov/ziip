@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import { Toaster } from "vue-sonner";
 import "vue-sonner/style.css";
+
+useHead({
+  link: [{ rel: "icon", type: "image/png", href: "favicon.ico" }],
+});
 </script>
 
 <template>

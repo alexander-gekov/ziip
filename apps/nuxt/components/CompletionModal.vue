@@ -12,6 +12,7 @@ interface Props {
   hintsUsed: number;
   puzzleId: number;
   puzzleNumber: number;
+  isPracticeMode: boolean;
 }
 
 interface UserScore {
@@ -63,7 +64,7 @@ watch(
       isExploding.value = true;
       hasShown.value = true;
       loadPuzzleStats();
-      
+
       // Auto-hide confetti after 4 seconds but keep modal open
       setTimeout(() => {
         isExploding.value = false;
@@ -80,19 +81,19 @@ watch(
 
 const loadPuzzleStats = async () => {
   if (!props.puzzleId) return;
-  
+
   isLoadingStats.value = true;
   try {
     const [statsResponse, leaderboardResponse] = await Promise.all([
       $fetch(`/api/puzzle/today`),
-      $fetch(`/api/puzzle/leaderboard/${props.puzzleId}`)
+      $fetch(`/api/puzzle/leaderboard/${props.puzzleId}`),
     ]);
-    
+
     puzzleStats.value = statsResponse.stats;
     leaderboard.value = leaderboardResponse;
   } catch (error) {
-    console.error('Error loading puzzle stats:', error);
-    toast.error('Failed to load puzzle statistics');
+    console.error("Error loading puzzle stats:", error);
+    toast.error("Failed to load puzzle statistics");
   } finally {
     isLoadingStats.value = false;
   }
@@ -100,33 +101,33 @@ const loadPuzzleStats = async () => {
 
 const submitScore = async () => {
   if (!userName.value.trim()) {
-    toast.error('Please enter your name');
+    toast.error("Please enter your name");
     return;
   }
-  
+
   if (hasSubmitted.value) return;
-  
+
   isSubmitting.value = true;
   try {
-    await $fetch('/api/puzzle/score', {
-      method: 'POST',
+    await $fetch("/api/puzzle/score", {
+      method: "POST",
       body: {
         userName: userName.value.trim(),
         puzzleId: props.puzzleId,
         timeElapsed: props.timeElapsed,
         moves: props.moves,
-        hintsUsed: props.hintsUsed
-      }
+        hintsUsed: props.hintsUsed,
+      },
     });
-    
+
     hasSubmitted.value = true;
-    toast.success('Score submitted successfully!');
-    
+    toast.success("Score submitted successfully!");
+
     // Reload stats and leaderboard
     await loadPuzzleStats();
   } catch (error) {
-    console.error('Error submitting score:', error);
-    toast.error('Failed to submit score');
+    console.error("Error submitting score:", error);
+    toast.error("Failed to submit score");
   } finally {
     isSubmitting.value = false;
   }
@@ -135,52 +136,87 @@ const submitScore = async () => {
 const downloadScreenshot = async () => {
   try {
     // Find the game grid element
-    const gameGrid = document.querySelector('[data-game-grid]') as HTMLElement;
+    const gameGrid = document.querySelector("[data-game-grid]") as HTMLElement;
     if (!gameGrid) {
-      toast.error('Could not find game grid for screenshot');
+      toast.error("Could not find game grid for screenshot");
       return;
     }
-    
+
+    // Create a clone of the grid to avoid modifying the original
+    const gridClone = gameGrid.cloneNode(true) as HTMLElement;
+
+    // Create a temporary container
+    const container = document.createElement("div");
+    container.style.position = "absolute";
+    container.style.left = "-9999px";
+    container.style.top = "-9999px";
+    container.appendChild(gridClone);
+    document.body.appendChild(container);
+
     // Use html2canvas to capture the grid
-    const html2canvas = await import('html2canvas');
-    const canvas = await html2canvas.default(gameGrid, {
-      backgroundColor: '#ffffff',
+    const html2canvas = await import("html2canvas");
+    const canvas = await html2canvas.default(gridClone, {
+      backgroundColor: "#ffffff",
       scale: 2,
-      useCORS: true
+      useCORS: true,
+      logging: false,
+      removeContainer: true,
+      onclone: (doc, element) => {
+        // Convert all colors to RGB to avoid oklch issues
+        const elements = element.getElementsByTagName("*");
+        for (let i = 0; i < elements.length; i++) {
+          const el = elements[i] as HTMLElement;
+          const computedStyle = getComputedStyle(el);
+          el.style.backgroundColor = computedStyle.backgroundColor;
+          el.style.color = computedStyle.color;
+          el.style.borderColor = computedStyle.borderColor;
+        }
+      },
     });
-    
+
+    // Remove the temporary container
+    document.body.removeChild(container);
+
     // Create download link
-    const link = document.createElement('a');
-    link.download = `ziip-${props.puzzleNumber}-${formatTime(props.timeElapsed)}.png`;
+    const link = document.createElement("a");
+    link.download = `ziip-${props.puzzleNumber}-${formatTime(
+      props.timeElapsed
+    )}.png`;
     link.href = canvas.toDataURL();
     link.click();
-    
-    toast.success('Screenshot downloaded!');
+
+    toast.success("Screenshot downloaded!");
   } catch (error) {
-    console.error('Error downloading screenshot:', error);
-    toast.error('Failed to download screenshot');
+    console.error("Error downloading screenshot:", error);
+    toast.error("Failed to download screenshot");
   }
 };
 
 const shareResult = async () => {
-  const shareText = `🎯 Ziip #${props.puzzleNumber} - ${formatTime(props.timeElapsed)}
+  const shareText = `🎯 Ziip #${props.puzzleNumber} - ${formatTime(
+    props.timeElapsed
+  )}
 
-${props.hintsUsed === 0 ? '🏆 Perfect solve!' : `💡 ${props.hintsUsed} hint${props.hintsUsed > 1 ? 's' : ''} used`}
+${
+  props.hintsUsed === 0
+    ? "🏆 Perfect solve!"
+    : `💡 ${props.hintsUsed} hint${props.hintsUsed > 1 ? "s" : ""} used`
+}
 🔢 ${props.moves} moves
 ⚡ ${puzzleStats.value?.totalPlays || 0} players completed today
 
 Play at ziip.fun`;
-  
+
   if (navigator.share) {
     try {
       await navigator.share({
         title: `Ziip #${props.puzzleNumber}`,
         text: shareText,
-        url: 'https://ziip.fun'
+        url: "https://ziip.fun",
       });
     } catch (error) {
       // User cancelled share or error occurred
-      if (error instanceof Error && error.name !== 'AbortError') {
+      if (error instanceof Error && error.name !== "AbortError") {
         copyToClipboard();
       }
     }
@@ -190,19 +226,28 @@ Play at ziip.fun`;
 };
 
 const copyToClipboard = () => {
-  const shareText = `🎯 Ziip #${props.puzzleNumber} - ${formatTime(props.timeElapsed)}
+  const shareText = `🎯 Ziip #${props.puzzleNumber} - ${formatTime(
+    props.timeElapsed
+  )}
 
-${props.hintsUsed === 0 ? '🏆 Perfect solve!' : `💡 ${props.hintsUsed} hint${props.hintsUsed > 1 ? 's' : ''} used`}
+${
+  props.hintsUsed === 0
+    ? "🏆 Perfect solve!"
+    : `💡 ${props.hintsUsed} hint${props.hintsUsed > 1 ? "s" : ""} used`
+}
 🔢 ${props.moves} moves
 ⚡ ${puzzleStats.value?.totalPlays || 0} players completed today
 
 Play at ziip.fun`;
-  
-  navigator.clipboard.writeText(shareText).then(() => {
-    toast.success('Result copied to clipboard!');
-  }).catch(() => {
-    toast.error('Failed to copy to clipboard');
-  });
+
+  navigator.clipboard
+    .writeText(shareText)
+    .then(() => {
+      toast.success("Result copied to clipboard!");
+    })
+    .catch(() => {
+      toast.error("Failed to copy to clipboard");
+    });
 };
 
 const handleClose = () => {
@@ -213,7 +258,9 @@ const handleClose = () => {
 
 const getUserRank = (userTime: number): number => {
   if (!leaderboard.value.length) return 1;
-  return leaderboard.value.filter(score => score.timeElapsed < userTime).length + 1;
+  return (
+    leaderboard.value.filter((score) => score.timeElapsed < userTime).length + 1
+  );
 };
 </script>
 
@@ -227,149 +274,229 @@ const getUserRank = (userTime: number): number => {
   <Dialog :open="isOpen" @update:open="handleClose">
     <DialogContent class="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
       <DialogHeader class="text-center sm:text-center">
-        <div class="relative mb-4 mx-auto">
-          <div class="text-6xl animate-bounce-slow">🎉</div>
-        </div>
+        <!-- Practice Mode -->
+        <template v-if="isPracticeMode">
+          <div class="relative mb-4 mx-auto">
+            <div class="text-6xl animate-bounce-slow">🎉</div>
+          </div>
 
-        <DialogTitle class="text-3xl font-bold mb-2">
-          <span
-            class="bg-clip-text text-transparent bg-gradient-to-r"
+          <div
+            class="text-4xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-r"
             :style="{
               backgroundImage: `linear-gradient(to right, ${colors.start}, ${colors.end})`,
             }">
-            Ziip #{{ puzzleNumber }}
-          </span>
-        </DialogTitle>
+            Amazing!
+          </div>
 
-        <div class="text-lg text-gray-600 mb-6">You're crushing it!</div>
-
-        <!-- Performance Stats -->
-        <div class="bg-gradient-to-r from-orange-50 to-yellow-50 rounded-xl p-6 mb-6">
-          <div class="text-5xl font-bold text-gray-800 font-mono mb-2">
+          <div class="text-5xl font-bold text-gray-800 font-mono mb-6">
             {{ formatTime(timeElapsed) }}
           </div>
-          <div class="text-sm text-gray-600 mb-4">
-            {{ hintsUsed > 0 ? `with ${hintsUsed} backtrack${hintsUsed > 1 ? 's' : ''}` : 'Perfect solve!' }}
-          </div>
-          
-          <!-- Today's Stats -->
-          <div v-if="puzzleStats && !isLoadingStats" class="grid grid-cols-3 gap-4 text-center">
-            <div>
-              <div class="text-2xl font-bold text-gray-700">{{ formatTime(Math.round(puzzleStats.averageTime || 0)) }}</div>
-              <div class="text-xs text-gray-500">Today's avg</div>
-            </div>
-            <div>
-              <div class="text-2xl font-bold text-gray-700">{{ puzzleStats.totalPlays }}</div>
-              <div class="text-xs text-gray-500">Players</div>
-            </div>
-            <div>
-              <div class="text-2xl font-bold text-gray-700">#{{ getUserRank(timeElapsed) }}</div>
-              <div class="text-xs text-gray-500">Your rank</div>
-            </div>
-          </div>
-          
-          <div v-else-if="isLoadingStats" class="text-center text-gray-500">
-            Loading stats...
-          </div>
-        </div>
 
-        <!-- Name Input & Submit -->
-        <div v-if="!hasSubmitted" class="space-y-4 mb-6">
-          <div>
-            <Label for="userName" class="text-sm font-medium text-gray-700">Share your name for the leaderboard</Label>
-            <Input
-              id="userName"
-              v-model="userName"
-              placeholder="Enter your name"
-              class="mt-1"
-              @keyup.enter="submitScore"
-              :disabled="isSubmitting"
-            />
+          <div class="text-2xl font-bold text-gray-800 mb-4">
+            Puzzle Complete!
           </div>
+
+          <div class="text-lg text-gray-600 mb-8">
+            You've successfully connected all the dots! 🔗
+          </div>
+
           <Button
-            @click="submitScore"
-            :disabled="!userName.trim() || isSubmitting"
-            class="w-full"
+            class="w-full py-3 px-4 font-semibold text-white"
             :style="{
               backgroundImage: `linear-gradient(to right, ${colors.start}, ${colors.end})`,
-            }">
-            {{ isSubmitting ? 'Submitting...' : 'Add to Leaderboard' }}
+            }"
+            @click="
+              emit('newGame');
+              handleClose();
+            ">
+            New Game
           </Button>
-        </div>
+        </template>
 
-        <!-- Action Buttons -->
-        <div class="grid grid-cols-3 gap-3 mb-6">
-          <Button variant="outline" @click="downloadScreenshot" class="flex flex-col items-center py-3">
-            <div class="text-2xl mb-1">📸</div>
-            <div class="text-xs">Screenshot</div>
-          </Button>
-          <Button variant="outline" @click="shareResult" class="flex flex-col items-center py-3">
-            <div class="text-2xl mb-1">📤</div>
-            <div class="text-xs">Share</div>
-          </Button>
-          <Button 
-            variant="outline" 
-            @click="showLeaderboard = !showLeaderboard" 
-            class="flex flex-col items-center py-3">
-            <div class="text-2xl mb-1">🏆</div>
-            <div class="text-xs">Leaderboard</div>
-          </Button>
-        </div>
+        <!-- Daily Challenge Mode -->
+        <template v-else>
+          <div class="relative mb-4 mx-auto">
+            <div class="text-6xl animate-bounce-slow">🎉</div>
+          </div>
 
-        <!-- Leaderboard -->
-        <div v-if="showLeaderboard" class="bg-gray-50 rounded-lg p-4 mb-6">
-          <h3 class="font-semibold text-gray-800 mb-3">Today's Leaderboard</h3>
-          <div class="space-y-2 max-h-48 overflow-y-auto">
+          <DialogTitle class="text-3xl font-bold mb-2">
+            <span
+              class="bg-clip-text text-transparent bg-gradient-to-r"
+              :style="{
+                backgroundImage: `linear-gradient(to right, ${colors.start}, ${colors.end})`,
+              }">
+              Ziip #{{ puzzleNumber }}
+            </span>
+          </DialogTitle>
+
+          <div class="text-lg text-gray-600 mb-6">You're crushing it!</div>
+
+          <!-- Performance Stats -->
+          <div
+            class="bg-gradient-to-r from-orange-50 to-yellow-50 rounded-xl p-6 mb-6">
+            <div class="text-5xl font-bold text-gray-800 font-mono mb-2">
+              {{ formatTime(timeElapsed) }}
+            </div>
+            <div class="text-sm text-gray-600 mb-4">
+              {{
+                hintsUsed > 0
+                  ? `with ${hintsUsed} backtrack${hintsUsed > 1 ? "s" : ""}`
+                  : "Perfect solve!"
+              }}
+            </div>
+
+            <!-- Today's Stats -->
             <div
-              v-for="(score, index) in leaderboard.slice(0, 10)"
-              :key="score.id"
-              class="flex items-center justify-between p-2 bg-white rounded-lg text-sm"
-              :class="{ 'ring-2 ring-orange-300': score.timeElapsed === timeElapsed && score.userName === userName }">
-              <div class="flex items-center space-x-3">
-                <div class="w-6 text-center font-medium text-gray-600">{{ index + 1 }}</div>
-                <div class="font-medium">{{ score.userName }}</div>
+              v-if="puzzleStats && !isLoadingStats"
+              class="grid grid-cols-3 gap-4 text-center">
+              <div>
+                <div class="text-2xl font-bold text-gray-700">
+                  {{ formatTime(Math.round(puzzleStats.averageTime || 0)) }}
+                </div>
+                <div class="text-xs text-gray-500">Today's avg</div>
               </div>
-              <div class="text-gray-600">{{ formatTime(score.timeElapsed) }}</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Connection Display -->
-        <div v-if="hasSubmitted" class="mb-6">
-          <div class="flex items-center justify-center space-x-4 text-sm text-gray-600">
-            <div class="flex items-center space-x-2">
-              <div class="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
-                <div class="w-4 h-4 bg-gray-400 rounded-full"></div>
+              <div>
+                <div class="text-2xl font-bold text-gray-700">
+                  {{ puzzleStats.totalPlays }}
+                </div>
+                <div class="text-xs text-gray-500">Players</div>
               </div>
-              <div class="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
-                <div class="w-4 h-4 bg-gray-400 rounded-full"></div>
-              </div>
-              <div class="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
-                <div class="w-4 h-4 bg-gray-400 rounded-full"></div>
-              </div>
-              <div class="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
-                <div class="w-4 h-4 bg-gray-400 rounded-full"></div>
-              </div>
-              <div class="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
-                <div class="w-4 h-4 bg-gray-400 rounded-full"></div>
+              <div>
+                <div class="text-2xl font-bold text-gray-700">
+                  #{{ getUserRank(timeElapsed) }}
+                </div>
+                <div class="text-xs text-gray-500">Your rank</div>
               </div>
             </div>
-          </div>
-          <div class="text-xs text-gray-500 mt-2">{{ puzzleStats?.totalPlays || 0 }} connections played</div>
-        </div>
 
-        <!-- New Game Button -->
-        <Button
-          class="w-full py-3 px-4 font-semibold text-white"
-          :style="{
-            backgroundImage: `linear-gradient(to right, ${colors.start}, ${colors.end})`,
-          }"
-          @click="
-            emit('newGame');
-            handleClose();
-          ">
-          Play Tomorrow's Puzzle
-        </Button>
+            <div v-else-if="isLoadingStats" class="text-center text-gray-500">
+              Loading stats...
+            </div>
+          </div>
+
+          <!-- Name Input & Submit -->
+          <div v-if="!hasSubmitted" class="space-y-4 mb-6">
+            <div>
+              <Label for="userName" class="text-sm font-medium text-gray-700"
+                >Share your name for the leaderboard</Label
+              >
+              <Input
+                id="userName"
+                v-model="userName"
+                placeholder="Enter your name"
+                class="mt-1"
+                @keyup.enter="submitScore"
+                :disabled="isSubmitting" />
+            </div>
+            <Button
+              @click="submitScore"
+              :disabled="!userName.trim() || isSubmitting"
+              class="w-full"
+              :style="{
+                backgroundImage: `linear-gradient(to right, ${colors.start}, ${colors.end})`,
+              }">
+              {{ isSubmitting ? "Submitting..." : "Add to Leaderboard" }}
+            </Button>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="grid grid-cols-3 gap-3 mb-6">
+            <Button
+              variant="outline"
+              @click="downloadScreenshot"
+              class="flex flex-col h-min items-center py-3">
+              <div class="text-2xl mb-1">📸</div>
+              <div class="text-xs">Screenshot</div>
+            </Button>
+            <Button
+              variant="outline"
+              @click="shareResult"
+              class="flex flex-col h-min items-center py-3">
+              <div class="text-2xl mb-1">📤</div>
+              <div class="text-xs">Share</div>
+            </Button>
+            <Button
+              variant="outline"
+              @click="showLeaderboard = !showLeaderboard"
+              class="flex flex-col h-min items-center py-3">
+              <div class="text-2xl mb-1">🏆</div>
+              <div class="text-xs">Leaderboard</div>
+            </Button>
+          </div>
+
+          <!-- Leaderboard -->
+          <div v-if="showLeaderboard" class="bg-gray-50 rounded-lg p-4 mb-6">
+            <h3 class="font-semibold text-gray-800 mb-3">
+              Today's Leaderboard
+            </h3>
+            <div class="space-y-2 max-h-48 overflow-y-auto">
+              <div
+                v-for="(score, index) in leaderboard.slice(0, 10)"
+                :key="score.id"
+                class="flex items-center justify-between p-2 bg-white rounded-lg text-sm"
+                :class="{
+                  'ring-2 ring-orange-300':
+                    score.timeElapsed === timeElapsed &&
+                    score.userName === userName,
+                }">
+                <div class="flex items-center space-x-3">
+                  <div class="w-6 text-center font-medium text-gray-600">
+                    {{ index + 1 }}
+                  </div>
+                  <div class="font-medium">{{ score.userName }}</div>
+                </div>
+                <div class="text-gray-600">
+                  {{ formatTime(score.timeElapsed) }}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Connection Display -->
+          <div v-if="hasSubmitted" class="mb-6">
+            <div
+              class="flex items-center justify-center space-x-4 text-sm text-gray-600">
+              <div class="flex items-center space-x-2">
+                <div
+                  class="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
+                  <div class="w-4 h-4 bg-gray-400 rounded-full"></div>
+                </div>
+                <div
+                  class="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
+                  <div class="w-4 h-4 bg-gray-400 rounded-full"></div>
+                </div>
+                <div
+                  class="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
+                  <div class="w-4 h-4 bg-gray-400 rounded-full"></div>
+                </div>
+                <div
+                  class="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
+                  <div class="w-4 h-4 bg-gray-400 rounded-full"></div>
+                </div>
+                <div
+                  class="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
+                  <div class="w-4 h-4 bg-gray-400 rounded-full"></div>
+                </div>
+              </div>
+            </div>
+            <div class="text-xs text-gray-500 mt-2">
+              {{ puzzleStats?.totalPlays || 0 }} connections played
+            </div>
+          </div>
+
+          <!-- New Game Button -->
+          <Button
+            class="w-full py-3 px-4 font-semibold text-white"
+            :style="{
+              backgroundImage: `linear-gradient(to right, ${colors.start}, ${colors.end})`,
+            }"
+            @click="
+              emit('newGame');
+              handleClose();
+            ">
+            Play Unlimited Mode
+          </Button>
+        </template>
       </DialogHeader>
     </DialogContent>
   </Dialog>

@@ -1,48 +1,103 @@
 <script setup lang="ts">
 import { Button } from "~/components/ui/button";
-import { Undo, Lightbulb, RefreshCw } from "lucide-vue-next";
+import { Undo, Lightbulb, RefreshCw, RotateCcw } from "lucide-vue-next";
 
 interface Props {
-  canUndo: boolean;
   isComplete: boolean;
+  canUndo: boolean;
+  isPracticeMode?: boolean;
+  gameColors: {
+    start: string;
+    end: string;
+    filledBg: string;
+    highlightBg: string;
+    activeBg: string;
+    startBg: string;
+  };
 }
 
-defineProps<Props>();
+const props = defineProps<Props>();
 
 const emit = defineEmits<{
   (e: "undo"): void;
   (e: "hint"): void;
   (e: "clear"): void;
+  (e: "new-game"): void;
+  (e: "solve"): void;
 }>();
+
+const handleUndo = () => {
+  emit("undo");
+};
+
+const handleHint = () => {
+  emit("hint");
+};
+
+const handleClear = () => {
+  emit("clear");
+};
+
+const handleNewGame = () => {
+  emit("new-game");
+};
+
+const handleSolve = () => {
+  emit("solve");
+};
 </script>
 
 <template>
-  <div class="flex gap-3 justify-center touch-action-manipulation">
-    <Button
-      variant="outline"
-      :disabled="!canUndo || isComplete"
-      class="flex items-center gap-2 px-6 py-2 rounded-full bg-white hover:bg-gray-50 border-2 border-gray-200 disabled:opacity-50"
-      @click="emit('undo')">
-      <LucideUndo :size="16" />
-      Undo
-    </Button>
+  <div class="flex flex-col space-y-4">
+    <!-- Main Game Controls -->
+    <div class="flex gap-2">
+      <Button
+        variant="outline"
+        class="flex-1"
+        :disabled="!props.canUndo || props.isComplete"
+        @click="handleUndo">
+        <LucideUndo class="w-4 h-4 mr-2" />
+        Undo
+      </Button>
+      <Button
+        variant="outline"
+        class="flex-1"
+        :disabled="props.isComplete"
+        @click="handleHint">
+        <LucideLightbulb class="w-4 h-4 mr-2" />
+        Hint
+      </Button>
+      <Button
+        variant="outline"
+        class="flex-1"
+        :disabled="props.isComplete"
+        @click="handleClear">
+        <LucideRotateCcw class="w-4 h-4 mr-2" />
+        Clear
+      </Button>
+    </div>
 
-    <Button
-      variant="outline"
-      :disabled="isComplete"
-      class="flex items-center gap-2 px-6 py-2 rounded-full bg-white hover:bg-gray-50 border-2 border-gray-200 disabled:opacity-50"
-      @click="emit('hint')">
-      <LucideLightbulb :size="16" />
-      Hint
-    </Button>
+    <!-- Practice Mode Controls -->
+    <div v-if="props.isPracticeMode" class="space-y-2">
+      <Button
+        @click="handleNewGame"
+        class="w-full text-white py-1 rounded-xl font-medium opacity-80 hover:opacity-100"
+        :style="{ background: props.gameColors.end }">
+        <LucideRefreshCw class="w-4 h-4 mr-2" />
+        New Game
+      </Button>
+      <Button
+        @click="handleSolve"
+        class="w-full text-white py-1 rounded-xl font-medium opacity-80 hover:opacity-100"
+        :style="{ background: props.gameColors.start }">
+        Solve
+      </Button>
+    </div>
 
-    <Button
-      variant="outline"
-      class="flex items-center gap-2 px-6 py-2 rounded-full bg-white hover:bg-gray-50 border-2 border-gray-200 disabled:opacity-50"
-      @click="emit('clear')">
-      <LucideRefreshCw :size="16" />
-      Clear
-    </Button>
+    <!-- Practice Mode Label -->
+    <div v-if="props.isPracticeMode" class="text-center text-sm text-gray-500">
+      Practice Mode - Scores won't be saved
+    </div>
   </div>
 </template>
 
