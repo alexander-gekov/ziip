@@ -1,5 +1,3 @@
-import type { Level, NumberedCell } from "../utils/levelGenerator";
-
 const hslToRgb = (h: number, s: number, l: number) => {
   s /= 100;
   l /= 100;
@@ -169,5 +167,3 @@ export const useGameColors = (initialSeed?: string) => {
     lighten,
   };
 };
-
-export type { Level, NumberedCell };

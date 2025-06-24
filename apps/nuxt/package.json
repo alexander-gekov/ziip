@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@pinia/nuxt": "^0.5.1",
+    "@prisma/client": "^6.10.1",
     "@tailwindcss/vite": "^4.1.10",
     "@tanstack/vue-table": "^8.21.3",
     "@vee-validate/zod": "^4.15.1",
@@ -38,6 +39,7 @@
   },
   "devDependencies": {
     "@volar/typescript": "^1.11.1",
+    "prisma": "^6.10.1",
     "typescript": "^5.8.3",
     "vue-tsc": "^2.2.10"
   }
