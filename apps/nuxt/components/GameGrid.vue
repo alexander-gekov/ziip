@@ -178,9 +178,9 @@ const gridWidth = computed(() => gridSize.value * cellSize.value);
 const gridHeight = computed(() => gridSize.value * cellSize.value);
 
 const strokeWidth = computed(() => {
-  const baseWidth = props.isDrawing ? 0.3 : 0.5;
-  const minWidth = props.isDrawing ? 12 : 16;
-  const maxWidth = props.isDrawing ? 22 : 40;
+  const baseWidth = props.isDrawing ? 0.55 : 0.7;
+  const minWidth = props.isDrawing ? 16 : 20;
+  const maxWidth = props.isDrawing ? 30 : 50;
   return Math.min(
     cellSize.value * baseWidth,
     Math.max(minWidth, maxWidth / (gridSize.value / 5))
@@ -297,10 +297,11 @@ const getCellClasses = (cell: Cell) => {
     {
       "bg-white": !cell.isFilled && !cell.isHighlighted && !isInCurrentPath,
       [props.colors.filledBg]: cell.isFilled && !isInCurrentPath,
+      "border-0 shadow-none": isInCurrentPath,
       [props.colors.activeBg]: isInCurrentPath,
       [props.colors.highlightBg]: !cell.isNumbered && cell.isHighlighted,
       "shadow-inner": cell.isFilled,
-      "border border-gray-300": true,
+      "border border-gray-300": !isInCurrentPath && !cell.isFilled,
       "border-t-4 border-t-gray-800": cell.walls?.top,
       "border-r-4 border-r-gray-800": cell.walls?.right,
       "border-b-4 border-b-gray-800": cell.walls?.bottom,

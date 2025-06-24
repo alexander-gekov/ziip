@@ -35,6 +35,7 @@ const showCompletionAnimation = ref(false);
 const timeElapsed = ref(0);
 const isTimerRunning = ref(false);
 const gameColors = ref<GameColors>(generateGameColors());
+const solutionTimeout = ref<NodeJS.Timeout | null>(null);
 
 // Timer effect
 let timerInterval: NodeJS.Timeout | null = null;
@@ -52,6 +53,7 @@ watch(
 
 onUnmounted(() => {
   if (timerInterval) clearInterval(timerInterval);
+  if (solutionTimeout.value) clearTimeout(solutionTimeout.value);
 });
 
 // Initialize game with daily level
@@ -149,6 +151,9 @@ const saveGameState = () => {
 };
 
 const handleMouseDown = (cellId: string) => {
+  // Prevent interactions if game is complete
+  if (gameState.value.isComplete) return;
+
   const [row, col] = cellId.split("-").map(Number);
   const cell = gameState.value.grid[row][col];
 
@@ -241,7 +246,8 @@ const handleMouseDown = (cellId: string) => {
 };
 
 const handleMouseMove = (cellId: string) => {
-  if (!gameState.value.isDrawing) return;
+  // Prevent interactions if game is complete
+  if (gameState.value.isComplete || !gameState.value.isDrawing) return;
 
   const lastCell =
     gameState.value.currentPath[gameState.value.currentPath.length - 1];
@@ -292,12 +298,18 @@ const handleMouseMove = (cellId: string) => {
 };
 
 const handleMouseUp = () => {
+  // Prevent interactions if game is complete
+  if (gameState.value.isComplete) return;
+
   if (gameState.value.isDrawing) {
     finalizePath();
   }
 };
 
 const handleMouseLeave = () => {
+  // Prevent interactions if game is complete
+  if (gameState.value.isComplete) return;
+
   if (gameState.value.isDrawing) {
     finalizePath();
   }
@@ -597,6 +609,12 @@ const getRandomDifficulty = (): "easy" | "medium" | "hard" => {
 };
 
 const handleNewGame = () => {
+  // Clear any active solution animation
+  if (solutionTimeout.value) {
+    clearTimeout(solutionTimeout.value);
+    solutionTimeout.value = null;
+  }
+
   try {
     const newDifficulty = getRandomDifficulty();
     difficulty.value = newDifficulty;
@@ -606,13 +624,11 @@ const handleNewGame = () => {
     timeElapsed.value = 0;
     isTimerRunning.value = false;
     toast.success(`New ${newDifficulty} game started!`);
-    console.log(level);
   } catch (error) {
     console.error("Failed to generate level:", error);
     toast.error("Failed to start a new game. Please try again.");
     // Fallback to easy level if random generation fails
     const level = generateRandomLevel("easy");
-    console.log(level);
     gridSize.value = level.gridSize;
     difficulty.value = "easy";
     initializeGrid(level);
@@ -623,6 +639,12 @@ const handleNewGame = () => {
 };
 
 const animateSolution = () => {
+  // Clear any existing solution animation
+  if (solutionTimeout.value) {
+    clearTimeout(solutionTimeout.value);
+    solutionTimeout.value = null;
+  }
+
   const { solutionPath } = gameState.value;
   let index = 1;
 
@@ -647,10 +669,11 @@ const animateSolution = () => {
       };
 
       index++;
-      setTimeout(revealStep, 100); // Faster animation
+      solutionTimeout.value = setTimeout(revealStep, 100); // Faster animation
     } else {
       gameState.value = { ...gameState.value, isComplete: true };
       showCompletionAnimation.value = true;
+      solutionTimeout.value = null;
     }
   };
 
@@ -659,7 +682,7 @@ const animateSolution = () => {
     ...gameState.value,
     currentPath: [`${solutionPath[0][0]}-${solutionPath[0][1]}`],
   };
-  setTimeout(revealStep, 100);
+  solutionTimeout.value = setTimeout(revealStep, 100);
 };
 </script>
 

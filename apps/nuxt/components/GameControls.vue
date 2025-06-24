@@ -38,7 +38,6 @@ const emit = defineEmits<{
 
     <Button
       variant="outline"
-      :disabled="isComplete"
       class="flex items-center gap-2 px-6 py-2 rounded-full bg-white hover:bg-gray-50 border-2 border-gray-200 disabled:opacity-50"
       @click="emit('clear')">
       <LucideRefreshCw :size="16" />
