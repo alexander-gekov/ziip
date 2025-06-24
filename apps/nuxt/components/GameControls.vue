@@ -17,7 +17,7 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <div class="flex gap-3 justify-center">
+  <div class="flex gap-3 justify-center touch-action-manipulation">
     <Button
       variant="outline"
       :disabled="!canUndo || isComplete"
@@ -45,3 +45,9 @@ const emit = defineEmits<{
     </Button>
   </div>
 </template>
+
+<style>
+.touch-action-manipulation {
+  touch-action: manipulation;
+}
+</style>

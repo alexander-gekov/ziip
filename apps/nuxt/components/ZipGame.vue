@@ -748,20 +748,23 @@ const animateSolution = () => {
       <!-- Instructions -->
       <GameInstructions :colors="gameColors" />
 
-      <!-- New Game Button -->
-      <Button
-        @click="handleNewGame"
-        class="w-full bg-gray-800 hover:bg-gray-900 text-white py-1 rounded-xl font-medium">
-        New Game
-      </Button>
+      <!-- Game Controls Container -->
+      <div class="space-y-3 touch-action-manipulation">
+        <!-- New Game Button -->
+        <Button
+          @click="handleNewGame"
+          class="w-full bg-gray-800 hover:bg-gray-900 text-white py-1 rounded-xl font-medium">
+          New Game
+        </Button>
 
-      <!-- Solve Button -->
-      <Button
-        @click="animateSolution"
-        class="w-full text-white py-1 rounded-xl font-medium opacity-80 hover:opacity-100"
-        :style="{ background: gameColors.end }">
-        Solve
-      </Button>
+        <!-- Solve Button -->
+        <Button
+          @click="animateSolution"
+          class="w-full text-white py-1 rounded-xl font-medium opacity-80 hover:opacity-100"
+          :style="{ background: gameColors.end }">
+          Solve
+        </Button>
+      </div>
     </div>
 
     <!-- Completion Animation -->
@@ -770,7 +773,6 @@ const animateSolution = () => {
       :colors="gameColors"
       :time-elapsed="timeElapsed"
       @animationComplete="handleAnimationComplete"
-      @newGame="handleNewGame"
-      :on-new-game="handleNewGame" />
+      @newGame="handleNewGame" />
   </div>
 </template>
