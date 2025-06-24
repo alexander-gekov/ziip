@@ -3,3 +3,62 @@ datasource db {
   provider  = "postgresql"
   url  	    = env("DATABASE_URL")
 }
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model DailyPuzzle {
+  id          Int      @id @default(autoincrement())
+  puzzleNumber Int     @unique // Ziip #93, #94, etc.
+  date        DateTime @unique
+  gridSize    Int
+  difficulty  String   // "easy", "medium", "hard" 
+  numberedCells Json   // Array of NumberedCell objects
+  solutionPath Json    // Array of [number, number] coordinates
+  walls       Json     // Array of Wall objects
+  seed        Int
+  
+  // Relations
+  scores      UserScore[]
+  stats       PuzzleStats?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@map("daily_puzzles")
+}
+
+model UserScore {
+  id           Int      @id @default(autoincrement())
+  userName     String
+  puzzleId     Int
+  timeElapsed  Int      // in seconds
+  moves        Int
+  hintsUsed    Int
+  completedAt  DateTime @default(now())
+  
+  // Relation
+  puzzle       DailyPuzzle @relation(fields: [puzzleId], references: [id])
+  
+  @@map("user_scores")
+  @@index([puzzleId, timeElapsed]) // For leaderboard queries
+}
+
+model PuzzleStats {
+  id              Int      @id @default(autoincrement())
+  puzzleId        Int      @unique
+  totalPlays      Int      @default(0)
+  averageTime     Float?   // in seconds
+  averageMoves    Float?
+  averageHints    Float?
+  fastestTime     Int?     // in seconds
+  slowestTime     Int?     // in seconds
+  
+  // Relation  
+  puzzle          DailyPuzzle @relation(fields: [puzzleId], references: [id])
+  
+  updatedAt       DateTime @updatedAt
+  
+  @@map("puzzle_stats")
+}

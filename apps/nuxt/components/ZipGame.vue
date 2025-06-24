@@ -1,23 +1,35 @@
 <script setup lang="ts">
 import { toast } from "vue-sonner";
-import {
-  generateDailyLevel,
-  generateRandomLevel,
-  type Level,
-  type NumberedCell,
-} from "~/utils/levelGenerator";
+import type { Level, NumberedCell } from "~/utils/levelGenerator";
+import { generateRandomLevel } from "~/utils/levelGenerator";
 import {
   generateGameColors,
   type GameColors,
 } from "~/composables/useGameColors";
+import type { DailyPuzzle, PuzzleStats } from "@prisma/client";
+import {
+  LucideMove,
+  LucideClock,
+  LucideLightbulb,
+  LucideLoader2,
+} from "lucide-vue-next";
 import GameGrid from "./GameGrid.vue";
 import GameControls from "./GameControls.vue";
 import GameInstructions from "./GameInstructions.vue";
-import CompletionAnimation from "./CompletionAnimation.vue";
-import type { Cell, GameState } from "../types/game";
+import CompletionModal from "./CompletionModal.vue";
+import type { Cell, GameState as ImportedGameState } from "../types/game";
 import { formatTime } from "../utils/format";
 
-// State management
+interface GameState {
+  grid: Cell[][];
+  currentPath: string[];
+  isDrawing: boolean;
+  isComplete: boolean;
+  moves: number;
+  hintsUsed: number;
+  solutionPath: [number, number][];
+}
+
 const gameState = ref<GameState>({
   grid: [],
   currentPath: [],
@@ -28,14 +40,26 @@ const gameState = ref<GameState>({
   solutionPath: [],
 });
 
+type PuzzleWithStats = DailyPuzzle & {
+  stats: PuzzleStats;
+};
+
+const currentPuzzle = ref<PuzzleWithStats | null>(null);
 const difficulty = ref<"easy" | "medium" | "hard">("easy");
 const gridSize = ref(6);
 const gameHistory = ref<GameState[]>([]);
-const showCompletionAnimation = ref(false);
+const showCompletionModal = ref(false);
 const timeElapsed = ref(0);
 const isTimerRunning = ref(false);
 const gameColors = ref<GameColors>(generateGameColors());
 const solutionTimeout = ref<NodeJS.Timeout | null>(null);
+const isLoadingPuzzle = ref(false);
+const isPracticeMode = ref(false);
+const hasCompletedDaily = ref(false);
+const completedPuzzles = useCookie<number[]>("completed_puzzles", {
+  default: () => [],
+  maxAge: 365 * 24 * 60 * 60, // 1 year expiry
+});
 
 // Timer effect
 let timerInterval: NodeJS.Timeout | null = null;
@@ -56,22 +80,52 @@ onUnmounted(() => {
   if (solutionTimeout.value) clearTimeout(solutionTimeout.value);
 });
 
-// Initialize game with daily level
-onMounted(() => {
+// Load today's puzzle on mount
+onBeforeMount(async () => {
+  await loadTodaysPuzzle();
+});
+
+const loadTodaysPuzzle = async () => {
+  isLoadingPuzzle.value = true;
   try {
-    const level = generateDailyLevel();
+    const puzzle = await $fetch<PuzzleWithStats>("/api/puzzle/today");
+    currentPuzzle.value = puzzle;
+
+    // Check if user has completed today's puzzle
+    if (completedPuzzles.value.includes(puzzle.puzzleNumber)) {
+      isPracticeMode.value = true;
+      hasCompletedDaily.value = true;
+      // Start a new random game in unlimited mode
+      const newDifficulty = getRandomDifficulty();
+      difficulty.value = newDifficulty;
+      const level = generateRandomLevel(newDifficulty);
+      gridSize.value = level.gridSize;
+      initializeGrid(level);
+      toast.info(
+        "You've already completed today's puzzle. Starting unlimited mode!"
+      );
+      return;
+    }
+
+    const level: Level = {
+      gridSize: puzzle.gridSize,
+      difficulty: puzzle.difficulty as "easy" | "medium" | "hard",
+      numberedCells: puzzle.numberedCells as unknown as NumberedCell[],
+      solutionPath: puzzle.solutionPath as unknown as Array<[number, number]>,
+      walls: puzzle.walls as unknown as Wall[],
+      seed: puzzle.seed,
+    };
+
     gridSize.value = level.gridSize;
     difficulty.value = level.difficulty;
     initializeGrid(level);
   } catch (error) {
-    console.error("Failed to generate level:", error);
-    // Fallback to easy level if daily generation fails
-    const level = generateRandomLevel("easy");
-    gridSize.value = level.gridSize;
-    difficulty.value = level.difficulty;
-    initializeGrid(level);
+    console.error("Failed to load today's puzzle:", error);
+    toast.error("Failed to load today's puzzle");
+  } finally {
+    isLoadingPuzzle.value = false;
   }
-});
+};
 
 const initializeGrid = (level: Level) => {
   const grid: Cell[][] = [];
@@ -144,6 +198,10 @@ const initializeGrid = (level: Level) => {
   };
   gameHistory.value = [];
   gameColors.value = generateGameColors();
+
+  // Reset timer
+  timeElapsed.value = 0;
+  isTimerRunning.value = false;
 };
 
 const saveGameState = () => {
@@ -383,7 +441,12 @@ const finalizePath = () => {
   };
 
   if (isComplete) {
-    showCompletionAnimation.value = true;
+    if (!isPracticeMode.value && !hasCompletedDaily.value) {
+      hasCompletedDaily.value = true;
+      showCompletionModal.value = true;
+    } else if (isPracticeMode.value) {
+      toast.success("Practice puzzle completed!");
+    }
   }
 };
 
@@ -422,9 +485,22 @@ const checkWinCondition = (grid: Cell[][], path: string[]): boolean => {
   return numberedCellIndex === numberedCells.length;
 };
 
-const handleAnimationComplete = () => {
-  showCompletionAnimation.value = false;
-  toast.success("Congratulations! You solved the puzzle!");
+const handleCompletionModalComplete = () => {
+  showCompletionModal.value = false;
+  toast.success("Congratulations! You solved today's puzzle!");
+
+  // Add current puzzle number to completed puzzles
+  if (
+    currentPuzzle.value &&
+    !completedPuzzles.value.includes(currentPuzzle.value.puzzleNumber)
+  ) {
+    completedPuzzles.value = [
+      ...completedPuzzles.value,
+      currentPuzzle.value.puzzleNumber,
+    ];
+  }
+
+  isPracticeMode.value = true;
 };
 
 const handleUndo = () => {
@@ -435,7 +511,28 @@ const handleUndo = () => {
   }
 };
 
+const submitScore = async () => {
+  if (!currentPuzzle.value?.id) return;
+
+  try {
+    await $fetch(`/api/puzzle/score`, {
+      method: "POST",
+      body: {
+        puzzleId: currentPuzzle.value.id,
+        moves: gameState.value.moves,
+        timeElapsed: timeElapsed.value,
+        hintsUsed: gameState.value.hintsUsed,
+      },
+    });
+  } catch (error) {
+    console.error("Failed to submit score:", error);
+    toast.error("Failed to save your score");
+  }
+};
+
 const handleHint = () => {
+  if (gameState.value.isComplete) return;
+
   // If no path exists, start with the first two cells of the solution
   if (gameState.value.currentPath.length === 0) {
     const [firstCell, secondCell] = gameState.value.solutionPath;
@@ -487,7 +584,7 @@ const handleHint = () => {
   for (let i = 0; i < currentPathCoords.length; i++) {
     const [currentRow, currentCol] = currentPathCoords[i];
     const foundIndex = gameState.value.solutionPath.findIndex(
-      ([row, col]: [number, number]) => row === currentRow && col === currentCol
+      ([row, col]) => row === currentRow && col === currentCol
     );
 
     if (foundIndex !== -1) {
@@ -548,11 +645,6 @@ const handleHint = () => {
     );
 
     const newPath = [...gameState.value.currentPath, nextCellId];
-    const isComplete = checkWinCondition(newGrid, newPath);
-    if (isComplete) {
-      gameState.value = { ...gameState.value, isComplete: true };
-      showCompletionAnimation.value = true;
-    }
 
     gameState.value = {
       ...gameState.value,
@@ -560,6 +652,16 @@ const handleHint = () => {
       currentPath: newPath,
       hintsUsed: gameState.value.hintsUsed + 1,
     };
+
+    // Check if this hint completed the puzzle
+    const isComplete = checkWinCondition(newGrid, newPath);
+    if (isComplete) {
+      gameState.value.isComplete = true;
+      showCompletionModal.value = true;
+      isTimerRunning.value = false;
+      toast.success("Puzzle completed with hint!");
+      return;
+    }
 
     const nextCellInPath = gameState.value.grid[nextCell[0]][nextCell[1]];
     if (nextCellInPath.isNumbered) {
@@ -572,32 +674,6 @@ const handleHint = () => {
   }
 };
 
-const handleClear = () => {
-  // Clear all drawn lines while keeping the same level
-  const clearedGrid = gameState.value.grid.map((row: Cell[]) =>
-    row.map((cell: Cell) => ({
-      ...cell,
-      isFilled: false,
-      isPath: false,
-      isHighlighted: false,
-    }))
-  );
-
-  gameState.value = {
-    ...gameState.value,
-    grid: clearedGrid,
-    currentPath: [],
-    isDrawing: false,
-    moves: 0,
-    hintsUsed: 0,
-  };
-
-  timeElapsed.value = 0;
-  isTimerRunning.value = false;
-  gameHistory.value = [];
-  toast.info("Grid cleared! Try again.");
-};
-
 const getRandomDifficulty = (): "easy" | "medium" | "hard" => {
   const difficulties: ("easy" | "medium" | "hard")[] = [
     "easy",
@@ -608,7 +684,26 @@ const getRandomDifficulty = (): "easy" | "medium" | "hard" => {
   return difficulties[randomIndex];
 };
 
+const handleClear = () => {
+  if (gameState.value.isComplete) return;
+
+  gameState.value = {
+    ...gameState.value,
+    currentPath: [],
+    grid: gameState.value.grid.map((row) =>
+      row.map((cell) => ({
+        ...cell,
+        isFilled: false,
+        isPath: false,
+        isHighlighted: false,
+      }))
+    ),
+  };
+};
+
 const handleNewGame = () => {
+  if (!isPracticeMode.value) return;
+
   // Clear any active solution animation
   if (solutionTimeout.value) {
     clearTimeout(solutionTimeout.value);
@@ -638,7 +733,52 @@ const handleNewGame = () => {
   }
 };
 
+const handleShowSolution = () => {
+  if (!isPracticeMode.value) return;
+
+  const solutionPath = gameState.value.solutionPath.map(
+    ([row, col]) => `${row}-${col}`
+  );
+
+  const newGrid = gameState.value.grid.map((row: Cell[]) =>
+    row.map((cell: Cell) => ({
+      ...cell,
+      isFilled: solutionPath.includes(cell.id),
+      isPath: solutionPath.includes(cell.id),
+      isHighlighted: false,
+    }))
+  );
+
+  gameState.value = {
+    ...gameState.value,
+    grid: newGrid,
+    currentPath: solutionPath,
+    isComplete: true,
+  };
+
+  toast.info("Solution revealed in practice mode");
+};
+
+const handleRandomGame = (newDifficulty: "easy" | "medium" | "hard") => {
+  if (!isPracticeMode.value) return;
+
+  try {
+    const level = generateRandomLevel(newDifficulty);
+    gridSize.value = level.gridSize;
+    difficulty.value = newDifficulty;
+    initializeGrid(level);
+    timeElapsed.value = 0;
+    isTimerRunning.value = false;
+    toast.success(`New ${newDifficulty} game started!`);
+  } catch (error) {
+    console.error("Failed to generate level:", error);
+    toast.error("Failed to start a new game. Please try again.");
+  }
+};
+
 const animateSolution = () => {
+  if (gameState.value.isComplete) return;
+
   // Clear any existing solution animation
   if (solutionTimeout.value) {
     clearTimeout(solutionTimeout.value);
@@ -652,7 +792,7 @@ const animateSolution = () => {
     if (index <= solutionPath.length) {
       const currentPath = solutionPath
         .slice(0, index)
-        .map(([row, col]: [number, number]) => `${row}-${col}`);
+        .map(([row, col]) => `${row}-${col}`);
 
       const newGrid = gameState.value.grid.map((row: Cell[]) =>
         row.map((cell: Cell) => ({
@@ -671,9 +811,15 @@ const animateSolution = () => {
       index++;
       solutionTimeout.value = setTimeout(revealStep, 100); // Faster animation
     } else {
-      gameState.value = { ...gameState.value, isComplete: true };
-      showCompletionAnimation.value = true;
+      isTimerRunning.value = false;
+      gameState.value = {
+        ...gameState.value,
+        isComplete: true,
+        hintsUsed: gameState.value.hintsUsed + 1, // Count solve as a hint
+      };
+      showCompletionModal.value = true;
       solutionTimeout.value = null;
+      toast.success("Solution revealed!");
     }
   };
 
@@ -684,95 +830,96 @@ const animateSolution = () => {
   };
   solutionTimeout.value = setTimeout(revealStep, 100);
 };
+
+const handleCompletion = () => {
+  if (gameState.value.isComplete) return;
+
+  // Stop the timer
+  isTimerRunning.value = false;
+
+  // Update game state
+  gameState.value = {
+    ...gameState.value,
+    isComplete: true,
+  };
+
+  // Show completion modal
+  showCompletionModal.value = true;
+
+  // Only submit score if it's not practice mode
+  if (!isPracticeMode.value && currentPuzzle.value?.id) {
+    submitScore();
+  }
+};
 </script>
 
 <template>
-  <div
-    class="min-h-screen w-full mx-auto bg-gradient-to-br from-gray-50 to-gray-100 p-2 lg:p-4">
-    <div class="max-w-sm lg:max-w-md mx-auto space-y-4 w-full">
-      <!-- Header -->
-      <div class="text-center space-y-4">
-        <h1 class="text-2xl font-bold text-gray-900">
-          {{ difficulty.charAt(0).toUpperCase() + difficulty.slice(1) }} Level
-          ({{ gridSize }}×{{ gridSize }})
-        </h1>
-        <div class="flex items-center justify-center gap-4 text-gray-600">
-          <div class="flex items-center gap-1">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              class="h-5 w-5"
-              viewBox="0 0 20 20"
-              fill="currentColor">
-              <path
-                fill-rule="evenodd"
-                d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z"
-                clip-rule="evenodd" />
-            </svg>
-            <span class="font-medium">{{ formatTime(timeElapsed) }}</span>
-          </div>
-          <div class="flex items-center gap-1">
-            <span class="font-medium">Moves: {{ gameState.moves }}</span>
-          </div>
-          <div class="flex items-center gap-1">
-            <span class="font-medium">Hints: {{ gameState.hintsUsed }}</span>
-          </div>
-        </div>
-      </div>
+  <div class="w-full max-w-md mx-auto space-y-4 p-4">
+    <GameInstructions
+      :puzzle-number="currentPuzzle?.puzzleNumber || 0"
+      :difficulty="difficulty"
+      :colors="gameColors"
+      :is-practice-mode="isPracticeMode" />
 
-      <!-- Game Grid -->
-      <div v-if="gameState.grid.length > 0" class="w-full aspect-square">
-        <GameGrid
-          :grid="gameState.grid"
-          :current-path="gameState.currentPath"
-          :is-drawing="gameState.isDrawing"
-          @mouseDown="handleMouseDown"
-          @mouseMove="handleMouseMove"
-          @mouseUp="handleMouseUp"
-          @mouseLeave="handleMouseLeave"
-          :is-complete="gameState.isComplete"
-          :show-completion-animation="showCompletionAnimation"
-          :colors="gameColors" />
-      </div>
-      <div v-else class="flex items-center min-h-48 justify-center h-full">
-        <LucideLoader2 class="w-10 h-10 animate-spin" />
-      </div>
-
-      <!-- Game Controls -->
-      <GameControls
-        :can-undo="gameHistory.length > 0"
-        :is-complete="gameState.isComplete"
-        @undo="handleUndo"
-        @hint="handleHint"
-        @clear="handleClear" />
-
-      <!-- Instructions -->
-      <GameInstructions :colors="gameColors" />
-
-      <!-- Game Controls Container -->
-      <div class="space-y-3 touch-action-manipulation">
-        <!-- New Game Button -->
-        <Button
-          @click="handleNewGame"
-          class="w-full bg-gray-800 hover:bg-gray-900 text-white py-1 rounded-xl font-medium">
-          New Game
-        </Button>
-
-        <!-- Solve Button -->
-        <Button
-          @click="animateSolution"
-          class="w-full text-white py-1 rounded-xl font-medium opacity-80 hover:opacity-100"
-          :style="{ background: gameColors.end }">
-          Solve
-        </Button>
+    <div v-if="isLoadingPuzzle || !currentPuzzle" class="text-center py-8">
+      <div class="text-lg flex items-center justify-center gap-2 text-gray-600">
+        Loading today's puzzle... <LucideLoader2 class="animate-spin w-4 h-4" />
       </div>
     </div>
 
-    <!-- Completion Animation -->
-    <CompletionAnimation
-      :is-complete="gameState.isComplete"
+    <div v-else class="space-y-4">
+      <div class="flex justify-center items-center gap-8 text-lg">
+        <div class="flex items-center gap-2">
+          <LucideMove class="w-4 h-4" />
+          {{ gameState.moves }}
+        </div>
+        <div class="flex items-center gap-2">
+          <LucideClock class="w-4 h-4" />
+          {{ formatTime(timeElapsed) }}
+        </div>
+        <div class="flex items-center gap-2">
+          <LucideLightbulb class="w-4 h-4" />
+          {{ gameState.hintsUsed }}
+        </div>
+      </div>
+
+      <GameGrid
+        :grid="gameState.grid"
+        :grid-size="gridSize"
+        :current-path="gameState.currentPath"
+        :is-drawing="gameState.isDrawing"
+        :is-complete="gameState.isComplete"
+        :colors="gameColors"
+        @mouse-down="handleMouseDown"
+        @mouse-move="handleMouseMove"
+        @mouse-up="handleMouseUp"
+        @mouse-leave="handleMouseLeave"
+        data-game-grid />
+
+      <GameControls
+        :is-complete="gameState.isComplete"
+        :can-undo="gameHistory.length > 0"
+        :is-practice-mode="isPracticeMode"
+        :game-colors="gameColors"
+        @undo="handleUndo"
+        @hint="handleHint"
+        @clear="handleClear"
+        @new-game="handleNewGame"
+        @show-solution="handleShowSolution"
+        @random-game="handleRandomGame"
+        @solve="animateSolution" />
+    </div>
+
+    <CompletionModal
+      :is-complete="gameState.isComplete && showCompletionModal"
       :colors="gameColors"
       :time-elapsed="timeElapsed"
-      @animationComplete="handleAnimationComplete"
-      @newGame="handleNewGame" />
+      :moves="gameState.moves"
+      :hints-used="gameState.hintsUsed"
+      :puzzle-id="currentPuzzle?.id || 0"
+      :puzzle-number="currentPuzzle?.puzzleNumber || 0"
+      :is-practice-mode="isPracticeMode"
+      @animation-complete="handleCompletionModalComplete"
+      @new-game="handleNewGame" />
   </div>
 </template>

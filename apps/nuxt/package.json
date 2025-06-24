@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@pinia/nuxt": "^0.5.1",
-    "@prisma/client": "^6.10.1",
+    "@prisma/client": "^6.6.0",
     "@tailwindcss/vite": "^4.1.10",
     "@tanstack/vue-table": "^8.21.3",
     "@vee-validate/zod": "^4.15.1",
@@ -35,11 +35,12 @@
     "vue-confetti-explosion": "^1.0.2",
     "vue-router": "^4.5.1",
     "vue-sonner": "^2.0.0",
-    "zod": "^3.23.8"
+    "zod": "^3.23.8",
+    "html2canvas": "^1.4.1"
   },
   "devDependencies": {
     "@volar/typescript": "^1.11.1",
-    "prisma": "^6.10.1",
+    "prisma": "^6.6.0",
     "typescript": "^5.8.3",
     "vue-tsc": "^2.2.10"
   }
