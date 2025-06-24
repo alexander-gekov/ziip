@@ -1,11 +1,6 @@
 <script setup lang="ts">
 import { toast } from "vue-sonner";
-import {
-  generateDailyLevel,
-  generateRandomLevel,
-  type Level,
-  type NumberedCell,
-} from "~/utils/levelGenerator";
+import type { Level, NumberedCell } from "~/utils/levelGenerator";
 import {
   generateGameColors,
   type GameColors,
@@ -13,7 +8,7 @@ import {
 import GameGrid from "./GameGrid.vue";
 import GameControls from "./GameControls.vue";
 import GameInstructions from "./GameInstructions.vue";
-import CompletionAnimation from "./CompletionAnimation.vue";
+import CompletionModal from "./CompletionModal.vue";
 import type { Cell, GameState } from "../types/game";
 import { formatTime } from "../utils/format";
 
@@ -28,14 +23,27 @@ const gameState = ref<GameState>({
   solutionPath: [],
 });
 
+const currentPuzzle = ref<{
+  id: number;
+  puzzleNumber: number;
+  date: string;
+  gridSize: number;
+  difficulty: string;
+  numberedCells: NumberedCell[];
+  solutionPath: Array<[number, number]>;
+  walls: Array<{ cell1: [number, number]; cell2: [number, number] }>;
+  seed: number;
+} | null>(null);
+
 const difficulty = ref<"easy" | "medium" | "hard">("easy");
 const gridSize = ref(6);
 const gameHistory = ref<GameState[]>([]);
-const showCompletionAnimation = ref(false);
+const showCompletionModal = ref(false);
 const timeElapsed = ref(0);
 const isTimerRunning = ref(false);
 const gameColors = ref<GameColors>(generateGameColors());
 const solutionTimeout = ref<NodeJS.Timeout | null>(null);
+const isLoadingPuzzle = ref(false);
 
 // Timer effect
 let timerInterval: NodeJS.Timeout | null = null;
@@ -56,22 +64,36 @@ onUnmounted(() => {
   if (solutionTimeout.value) clearTimeout(solutionTimeout.value);
 });
 
-// Initialize game with daily level
-onMounted(() => {
+// Load today's puzzle on mount
+onMounted(async () => {
+  await loadTodaysPuzzle();
+});
+
+const loadTodaysPuzzle = async () => {
+  isLoadingPuzzle.value = true;
   try {
-    const level = generateDailyLevel();
+    const puzzle = await $fetch('/api/puzzle/today');
+    currentPuzzle.value = puzzle;
+    
+    const level: Level = {
+      gridSize: puzzle.gridSize,
+      difficulty: puzzle.difficulty as "easy" | "medium" | "hard",
+      numberedCells: puzzle.numberedCells,
+      solutionPath: puzzle.solutionPath,
+      walls: puzzle.walls,
+      seed: puzzle.seed
+    };
+    
     gridSize.value = level.gridSize;
     difficulty.value = level.difficulty;
     initializeGrid(level);
   } catch (error) {
-    console.error("Failed to generate level:", error);
-    // Fallback to easy level if daily generation fails
-    const level = generateRandomLevel("easy");
-    gridSize.value = level.gridSize;
-    difficulty.value = level.difficulty;
-    initializeGrid(level);
+    console.error("Failed to load today's puzzle:", error);
+    toast.error("Failed to load today's puzzle");
+  } finally {
+    isLoadingPuzzle.value = false;
   }
-});
+};
 
 const initializeGrid = (level: Level) => {
   const grid: Cell[][] = [];
@@ -144,6 +166,10 @@ const initializeGrid = (level: Level) => {
   };
   gameHistory.value = [];
   gameColors.value = generateGameColors();
+  
+  // Reset timer
+  timeElapsed.value = 0;
+  isTimerRunning.value = false;
 };
 
 const saveGameState = () => {
@@ -383,7 +409,7 @@ const finalizePath = () => {
   };
 
   if (isComplete) {
-    showCompletionAnimation.value = true;
+    showCompletionModal.value = true;
   }
 };
 
@@ -422,8 +448,8 @@ const checkWinCondition = (grid: Cell[][], path: string[]): boolean => {
   return numberedCellIndex === numberedCells.length;
 };
 
-const handleAnimationComplete = () => {
-  showCompletionAnimation.value = false;
+const handleCompletionModalComplete = () => {
+  showCompletionModal.value = false;
   toast.success("Congratulations! You solved the puzzle!");
 };
 
@@ -506,53 +532,19 @@ const handleHint = () => {
     }
   }
 
-  // If we found a deviation, revert to the last correct cell
-  if (lastCorrectIndex !== currentPathCoords.length - 1) {
-    const correctPath = gameState.value.currentPath.slice(
-      0,
-      lastCorrectIndex + 1
-    );
-    const newGrid = gameState.value.grid.map((row: Cell[]) =>
-      row.map((cell: Cell) => ({
-        ...cell,
-        isFilled: correctPath.includes(cell.id),
-        isPath: correctPath.includes(cell.id),
-      }))
-    );
-
-    gameState.value = {
-      ...gameState.value,
-      grid: newGrid,
-      currentPath: correctPath,
-      hintsUsed: gameState.value.hintsUsed + 1,
-    };
-
-    toast.warning("Reverting to last correct position!");
-    return;
-  }
-
-  // Continue with the next correct cell
-  if (
-    solutionIndex >= 0 &&
-    solutionIndex < gameState.value.solutionPath.length - 1
-  ) {
-    const nextCell = gameState.value.solutionPath[solutionIndex + 1];
-    const nextCellId = `${nextCell[0]}-${nextCell[1]}`;
-
-    const newGrid = gameState.value.grid.map((row: Cell[]) =>
-      row.map((cell: Cell) => ({
-        ...cell,
-        isFilled: cell.id === nextCellId ? true : cell.isFilled,
-        isPath: cell.id === nextCellId ? true : cell.isPath,
-      }))
-    );
-
+  // If we have a correct path so far, extend it by one step
+  if (lastCorrectIndex >= 0 && solutionIndex < gameState.value.solutionPath.length - 1) {
+    const nextSolutionCell = gameState.value.solutionPath[solutionIndex + 1];
+    const nextCellId = `${nextSolutionCell[0]}-${nextSolutionCell[1]}`;
+    
     const newPath = [...gameState.value.currentPath, nextCellId];
-    const isComplete = checkWinCondition(newGrid, newPath);
-    if (isComplete) {
-      gameState.value = { ...gameState.value, isComplete: true };
-      showCompletionAnimation.value = true;
-    }
+    const newGrid = gameState.value.grid.map((row: Cell[]) =>
+      row.map((cell: Cell) => ({
+        ...cell,
+        isFilled: newPath.includes(cell.id),
+        isPath: newPath.includes(cell.id),
+      }))
+    );
 
     gameState.value = {
       ...gameState.value,
@@ -561,218 +553,65 @@ const handleHint = () => {
       hintsUsed: gameState.value.hintsUsed + 1,
     };
 
-    const nextCellInPath = gameState.value.grid[nextCell[0]][nextCell[1]];
-    if (nextCellInPath.isNumbered) {
-      toast.info(`Connected to number ${nextCellInPath.number}!`);
-    } else {
-      toast.info("Added the next cell in the path!");
-    }
+    toast.info("Added next step to your path!");
   } else {
-    toast.info("You're at the end of the path!");
+    toast.info("Hint: Try starting from a numbered cell!");
   }
 };
 
-const handleClear = () => {
-  // Clear all drawn lines while keeping the same level
-  const clearedGrid = gameState.value.grid.map((row: Cell[]) =>
-    row.map((cell: Cell) => ({
-      ...cell,
-      isFilled: false,
-      isPath: false,
-      isHighlighted: false,
-    }))
-  );
-
-  gameState.value = {
-    ...gameState.value,
-    grid: clearedGrid,
-    currentPath: [],
-    isDrawing: false,
-    moves: 0,
-    hintsUsed: 0,
-  };
-
-  timeElapsed.value = 0;
-  isTimerRunning.value = false;
-  gameHistory.value = [];
-  toast.info("Grid cleared! Try again.");
-};
-
-const getRandomDifficulty = (): "easy" | "medium" | "hard" => {
-  const difficulties: ("easy" | "medium" | "hard")[] = [
-    "easy",
-    "medium",
-    "hard",
-  ];
-  const randomIndex = Math.floor(Math.random() * difficulties.length);
-  return difficulties[randomIndex];
-};
-
-const handleNewGame = () => {
-  // Clear any active solution animation
-  if (solutionTimeout.value) {
-    clearTimeout(solutionTimeout.value);
-    solutionTimeout.value = null;
-  }
-
-  try {
-    const newDifficulty = getRandomDifficulty();
-    difficulty.value = newDifficulty;
-    const level = generateRandomLevel(newDifficulty);
-    gridSize.value = level.gridSize;
-    initializeGrid(level);
-    timeElapsed.value = 0;
-    isTimerRunning.value = false;
-    toast.success(`New ${newDifficulty} game started!`);
-  } catch (error) {
-    console.error("Failed to generate level:", error);
-    toast.error("Failed to start a new game. Please try again.");
-    // Fallback to easy level if random generation fails
-    const level = generateRandomLevel("easy");
-    gridSize.value = level.gridSize;
-    difficulty.value = "easy";
-    initializeGrid(level);
-    timeElapsed.value = 0;
-    isTimerRunning.value = false;
-    toast.success("New game started!");
-  }
-};
-
-const animateSolution = () => {
-  // Clear any existing solution animation
-  if (solutionTimeout.value) {
-    clearTimeout(solutionTimeout.value);
-    solutionTimeout.value = null;
-  }
-
-  const { solutionPath } = gameState.value;
-  let index = 1;
-
-  const revealStep = () => {
-    if (index <= solutionPath.length) {
-      const currentPath = solutionPath
-        .slice(0, index)
-        .map(([row, col]: [number, number]) => `${row}-${col}`);
-
-      const newGrid = gameState.value.grid.map((row: Cell[]) =>
-        row.map((cell: Cell) => ({
-          ...cell,
-          isFilled: currentPath.includes(cell.id),
-          isPath: currentPath.includes(cell.id),
-        }))
-      );
-
-      gameState.value = {
-        ...gameState.value,
-        grid: newGrid,
-        currentPath,
-      };
-
-      index++;
-      solutionTimeout.value = setTimeout(revealStep, 100); // Faster animation
-    } else {
-      gameState.value = { ...gameState.value, isComplete: true };
-      showCompletionAnimation.value = true;
-      solutionTimeout.value = null;
-    }
-  };
-
-  // Start with the first cell
-  gameState.value = {
-    ...gameState.value,
-    currentPath: [`${solutionPath[0][0]}-${solutionPath[0][1]}`],
-  };
-  solutionTimeout.value = setTimeout(revealStep, 100);
+const handleNewGame = async () => {
+  await loadTodaysPuzzle();
 };
 </script>
 
 <template>
-  <div
-    class="min-h-screen w-full mx-auto bg-gradient-to-br from-gray-50 to-gray-100 p-2 lg:p-4">
-    <div class="max-w-sm lg:max-w-md mx-auto space-y-4 w-full">
-      <!-- Header -->
-      <div class="text-center space-y-4">
-        <h1 class="text-2xl font-bold text-gray-900">
-          {{ difficulty.charAt(0).toUpperCase() + difficulty.slice(1) }} Level
-          ({{ gridSize }}×{{ gridSize }})
-        </h1>
-        <div class="flex items-center justify-center gap-4 text-gray-600">
-          <div class="flex items-center gap-1">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              class="h-5 w-5"
-              viewBox="0 0 20 20"
-              fill="currentColor">
-              <path
-                fill-rule="evenodd"
-                d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z"
-                clip-rule="evenodd" />
-            </svg>
-            <span class="font-medium">{{ formatTime(timeElapsed) }}</span>
-          </div>
-          <div class="flex items-center gap-1">
-            <span class="font-medium">Moves: {{ gameState.moves }}</span>
-          </div>
-          <div class="flex items-center gap-1">
-            <span class="font-medium">Hints: {{ gameState.hintsUsed }}</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Game Grid -->
-      <div v-if="gameState.grid.length > 0" class="w-full aspect-square">
-        <GameGrid
-          :grid="gameState.grid"
-          :current-path="gameState.currentPath"
-          :is-drawing="gameState.isDrawing"
-          @mouseDown="handleMouseDown"
-          @mouseMove="handleMouseMove"
-          @mouseUp="handleMouseUp"
-          @mouseLeave="handleMouseLeave"
-          :is-complete="gameState.isComplete"
-          :show-completion-animation="showCompletionAnimation"
-          :colors="gameColors" />
-      </div>
-      <div v-else class="flex items-center min-h-48 justify-center h-full">
-        <LucideLoader2 class="w-10 h-10 animate-spin" />
-      </div>
-
-      <!-- Game Controls -->
-      <GameControls
-        :can-undo="gameHistory.length > 0"
+  <div class="w-full max-w-md mx-auto space-y-4 p-4">
+    <GameInstructions 
+      :puzzle-number="currentPuzzle?.puzzleNumber || 0"
+      :difficulty="difficulty" 
+    />
+    
+    <div v-if="isLoadingPuzzle" class="text-center py-8">
+      <div class="text-lg text-gray-600">Loading today's puzzle...</div>
+    </div>
+    
+    <div v-else class="space-y-4">
+      <GameGrid
+        :grid="gameState.grid"
+        :grid-size="gridSize"
+        :current-path="gameState.currentPath"
+        :is-drawing="gameState.isDrawing"
         :is-complete="gameState.isComplete"
+        :colors="gameColors"
+        @mouse-down="handleMouseDown"
+        @mouse-move="handleMouseMove"
+        @mouse-up="handleMouseUp"
+        @mouse-leave="handleMouseLeave"
+        data-game-grid
+      />
+
+      <GameControls
+        :moves="gameState.moves"
+        :hints-used="gameState.hintsUsed"
+        :time-elapsed="timeElapsed"
+        :is-complete="gameState.isComplete"
+        :can-undo="gameHistory.length > 0"
         @undo="handleUndo"
         @hint="handleHint"
-        @clear="handleClear" />
-
-      <!-- Instructions -->
-      <GameInstructions :colors="gameColors" />
-
-      <!-- Game Controls Container -->
-      <div class="space-y-3 touch-action-manipulation">
-        <!-- New Game Button -->
-        <Button
-          @click="handleNewGame"
-          class="w-full bg-gray-800 hover:bg-gray-900 text-white py-1 rounded-xl font-medium">
-          New Game
-        </Button>
-
-        <!-- Solve Button -->
-        <Button
-          @click="animateSolution"
-          class="w-full text-white py-1 rounded-xl font-medium opacity-80 hover:opacity-100"
-          :style="{ background: gameColors.end }">
-          Solve
-        </Button>
-      </div>
+        @new-game="handleNewGame"
+      />
     </div>
 
-    <!-- Completion Animation -->
-    <CompletionAnimation
-      :is-complete="gameState.isComplete"
+    <CompletionModal
+      :is-complete="gameState.isComplete && showCompletionModal"
       :colors="gameColors"
       :time-elapsed="timeElapsed"
-      @animationComplete="handleAnimationComplete"
-      @newGame="handleNewGame" />
+      :moves="gameState.moves"
+      :hints-used="gameState.hintsUsed"
+      :puzzle-id="currentPuzzle?.id || 0"
+      :puzzle-number="currentPuzzle?.puzzleNumber || 0"
+      @animation-complete="handleCompletionModalComplete"
+      @new-game="handleNewGame"
+    />
   </div>
 </template>
