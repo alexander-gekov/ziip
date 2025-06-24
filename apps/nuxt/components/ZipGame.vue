@@ -445,7 +445,7 @@ const finalizePath = () => {
       hasCompletedDaily.value = true;
       showCompletionModal.value = true;
     } else if (isPracticeMode.value) {
-      toast.success("Practice puzzle completed!");
+      showCompletionModal.value = true;
     }
   }
 };
