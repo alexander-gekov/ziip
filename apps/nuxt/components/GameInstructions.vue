@@ -7,7 +7,7 @@ interface Props {
 
 defineProps<Props>();
 
-const isExpanded = ref(true);
+const isExpanded = ref(false);
 </script>
 
 <template>
