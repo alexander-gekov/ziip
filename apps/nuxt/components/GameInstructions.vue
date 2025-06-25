@@ -26,9 +26,11 @@ const title = computed(() => {
   <div class="text-center space-y-2">
     <div class="flex items-center justify-center gap-2">
       <div class="text-3xl">🏁</div>
-      <h1 class="text-2xl font-bold text-gray-900">{{ title }}</h1>
+      <h1 class="text-2xl font-bold dark:text-white text-gray-900">
+        {{ title }}
+      </h1>
     </div>
-    <div class="text-sm text-gray-600">
+    <div class="text-sm text-muted-foreground">
       Connect the numbered dots in order to fill the grid
     </div>
   </div>

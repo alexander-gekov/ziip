@@ -4,9 +4,10 @@
       <div
         ref="gridRef"
         :class="[
-          'grid border-2 border-gray-400 rounded-lg overflow-hidden shadow-lg',
+          'grid border-2 rounded-lg overflow-hidden shadow-lg',
           'transition-all duration-500 touch-none select-none',
           'outline-none focus:outline-none',
+          'border-gray-400 dark:border-gray-600',
           { 'scale-105 shadow-xl': showCompletionAnimation },
         ]"
         :style="{
@@ -296,17 +297,19 @@ const getCellClasses = (cell: Cell) => {
     "aspect-square transition-all duration-300 cursor-pointer relative",
     "flex items-center justify-center",
     {
-      "bg-white": !cell.isFilled && !cell.isHighlighted && !isInCurrentPath,
+      "bg-white dark:bg-gray-800":
+        !cell.isFilled && !cell.isHighlighted && !isInCurrentPath,
       [props.colors.filledBg]: cell.isFilled && !isInCurrentPath,
       "border-0 shadow-none": isInCurrentPath,
       [props.colors.activeBg]: isInCurrentPath,
       [props.colors.highlightBg]: !cell.isNumbered && cell.isHighlighted,
       "shadow-inner": cell.isFilled,
-      "border border-gray-300": !isInCurrentPath && !cell.isFilled,
-      "border-t-4 border-t-gray-800": cell.walls?.top,
-      "border-r-4 border-r-gray-800": cell.walls?.right,
-      "border-b-4 border-b-gray-800": cell.walls?.bottom,
-      "border-l-4 border-l-gray-800": cell.walls?.left,
+      "border border-gray-300 dark:border-gray-600":
+        !isInCurrentPath && !cell.isFilled,
+      "border-t-4 border-t-gray-800 dark:border-t-gray-900": cell.walls?.top,
+      "border-r-4 border-r-gray-800 dark:border-r-gray-900": cell.walls?.right,
+      "border-b-4 border-b-gray-800 dark:border-b-gray-900": cell.walls?.bottom,
+      "border-l-4 border-l-gray-800 dark:border-l-gray-900": cell.walls?.left,
     },
   ];
 };
@@ -317,7 +320,7 @@ const getNumberedCellClasses = (cell: Cell) => {
   return [
     "rounded-full text-white z-30 relative",
     "flex items-center justify-center text-lg font-bold",
-    "border-2 border-white shadow-lg",
+    "border-2 border-white dark:border-gray-200 shadow-lg",
     "select-none pointer-events-none",
     "transition-all duration-300",
     {

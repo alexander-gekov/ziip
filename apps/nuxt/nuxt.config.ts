@@ -8,7 +8,19 @@ export default defineNuxtConfig({
     strict: true,
     typeCheck: true,
   },
-  modules: ["@pinia/nuxt", "shadcn-nuxt", "@vueuse/nuxt", "nuxt-lucide-icons"],
+  modules: [
+    "@pinia/nuxt",
+    "shadcn-nuxt",
+    "@vueuse/nuxt",
+    "nuxt-lucide-icons",
+    "@nuxtjs/color-mode",
+  ],
+  colorMode: {
+    preference: "system",
+    fallback: "light",
+    classSuffix: "",
+    storageKey: "color-mode",
+  },
   app: {
     head: {
       title: "Ziip | Connect the dots",

@@ -12,6 +12,8 @@ import {
   LucideClock,
   LucideLightbulb,
   LucideLoader2,
+  LucideMoon,
+  LucideSun,
 } from "lucide-vue-next";
 import GameGrid from "./GameGrid.vue";
 import GameControls from "./GameControls.vue";
@@ -20,6 +22,19 @@ import CompletionModal from "./CompletionModal.vue";
 import LeaderboardMenu from "./LeaderboardMenu.vue";
 import type { Cell, GameState as ImportedGameState } from "../types/game";
 import { formatTime } from "../utils/format";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "~/components/ui/dropdown-menu";
+import { Button } from "~/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "~/components/ui/tooltip";
 
 interface GameState {
   grid: Cell[][];
@@ -854,6 +869,8 @@ const handleCompletion = () => {
     submitScore();
   }
 };
+
+const colorMode = useColorMode();
 </script>
 
 <template>
@@ -872,12 +889,21 @@ const handleCompletion = () => {
 
     <div v-else class="space-y-4">
       <div class="flex justify-between items-center">
+        <div class="flex items-center gap-2">
+          <LeaderboardMenu
+            :puzzle-id="currentPuzzle?.id || 0"
+            :puzzle-number="currentPuzzle?.puzzleNumber || 0"
+            :colors="gameColors"
+            :time-elapsed="timeElapsed"
+            :moves="gameState.moves"
+            :hints-used="gameState.hintsUsed" />
+        </div>
         <div class="flex items-center gap-8 text-lg">
           <div class="flex items-center gap-2">
             <LucideMove class="w-4 h-4" />
             {{ gameState.moves }}
           </div>
-          <div class="flex items-center gap-2">
+          <div class="flex text-lg font-semibold items-center gap-2">
             <LucideClock class="w-4 h-4" />
             {{ formatTime(timeElapsed) }}
           </div>
@@ -886,13 +912,39 @@ const handleCompletion = () => {
             {{ gameState.hintsUsed }}
           </div>
         </div>
-        <LeaderboardMenu
-          :puzzle-id="currentPuzzle?.id || 0"
-          :puzzle-number="currentPuzzle?.puzzleNumber || 0"
-          :colors="gameColors"
-          :time-elapsed="timeElapsed"
-          :moves="gameState.moves"
-          :hints-used="gameState.hintsUsed" />
+        <div class="flex items-center gap-2">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger>
+                <DropdownMenu>
+                  <DropdownMenuTrigger as-child>
+                    <Button size="sm" variant="ghost">
+                      <LucideSun
+                        class="w-4 h-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+                      <LucideMoon
+                        class="w-4 h-4 absolute rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+                      <span class="sr-only">Toggle theme</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem @click="colorMode.preference = 'light'">
+                      Light
+                    </DropdownMenuItem>
+                    <DropdownMenuItem @click="colorMode.preference = 'dark'">
+                      Dark
+                    </DropdownMenuItem>
+                    <DropdownMenuItem @click="colorMode.preference = 'system'">
+                      System
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Change theme</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
       </div>
 
       <GameGrid

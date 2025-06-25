@@ -73,7 +73,6 @@ watch(isOpen, (newValue) => {
       as="button"
       class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors">
       <LucideTrophy class="w-4 h-4" />
-      <span>Leaderboard</span>
     </DropdownMenuTrigger>
 
     <DropdownMenuContent class="w-80">
