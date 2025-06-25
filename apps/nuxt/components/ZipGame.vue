@@ -441,7 +441,17 @@ const finalizePath = () => {
   };
 
   if (isComplete) {
-    if (!isPracticeMode.value && !hasCompletedDaily.value) {
+    // Save completed puzzle in cookie immediately upon completion
+    if (
+      !isPracticeMode.value &&
+      !hasCompletedDaily.value &&
+      currentPuzzle.value &&
+      !completedPuzzles.value.includes(currentPuzzle.value.puzzleNumber)
+    ) {
+      completedPuzzles.value = [
+        ...completedPuzzles.value,
+        currentPuzzle.value.puzzleNumber,
+      ];
       hasCompletedDaily.value = true;
       showCompletionModal.value = true;
     } else if (isPracticeMode.value) {
@@ -488,18 +498,6 @@ const checkWinCondition = (grid: Cell[][], path: string[]): boolean => {
 const handleCompletionModalComplete = () => {
   showCompletionModal.value = false;
   toast.success("Congratulations! You solved today's puzzle!");
-
-  // Add current puzzle number to completed puzzles
-  if (
-    currentPuzzle.value &&
-    !completedPuzzles.value.includes(currentPuzzle.value.puzzleNumber)
-  ) {
-    completedPuzzles.value = [
-      ...completedPuzzles.value,
-      currentPuzzle.value.puzzleNumber,
-    ];
-  }
-
   isPracticeMode.value = true;
 };
 
