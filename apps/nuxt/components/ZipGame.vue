@@ -887,7 +887,6 @@ const handleCompletion = () => {
           </div>
         </div>
         <LeaderboardMenu
-          v-if="!isPracticeMode"
           :puzzle-id="currentPuzzle?.id || 0"
           :puzzle-number="currentPuzzle?.puzzleNumber || 0"
           :colors="gameColors"
