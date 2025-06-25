@@ -36,6 +36,7 @@
           @touchcancel.prevent="handleTouchEnd">
           <div
             v-if="cell.isNumbered"
+            :key="`${cell.id}-${currentPath.includes(cell.id)}`"
             :class="getNumberedCellClasses(cell)"
             :style="{
               width: `${Math.min(40, cellSize * 0.6)}px`,
@@ -320,7 +321,7 @@ const getNumberedCellClasses = (cell: Cell) => {
     "select-none pointer-events-none",
     "transition-all duration-300",
     {
-      "animate-[pop_0.5s_ease-out]": isInCurrentPath,
+      "pop-animation": isInCurrentPath,
       "drop-shadow-lg": isInCurrentPath,
     },
   ];
@@ -378,6 +379,10 @@ watch(
     transform: scale(1);
     box-shadow: 0 0 5px rgba(255, 255, 255, 0.2);
   }
+}
+
+.pop-animation {
+  animation: pop 0.5s ease-out;
 }
 
 .path-stretch {
