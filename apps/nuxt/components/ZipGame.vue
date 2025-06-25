@@ -475,25 +475,25 @@ const checkWinCondition = (grid: Cell[][], path: string[]): boolean => {
 
   if (!allCellsFilled || numberedCells.length === 0) return false;
 
-  // Get the current path as array of cells
-  const pathCells = path.map((cellId) => {
-    const [row, col] = cellId.split("-").map(Number);
-    return grid[row][col];
-  });
+  // Get all numbered cells in the current path
+  const numberedCellsInPath = path
+    .map((cellId) => {
+      const [row, col] = cellId.split("-").map(Number);
+      return grid[row][col];
+    })
+    .filter((cell) => cell.isNumbered);
 
-  // Check if numbered cells appear in the correct order in the path
-  let numberedCellIndex = 0;
-  for (const cell of pathCells) {
-    if (cell.isNumbered) {
-      if (cell.number !== numberedCells[numberedCellIndex].number) {
-        return false; // Numbers are not in sequence
-      }
-      numberedCellIndex++;
-    }
+  // If we don't have all numbered cells in the path, it's not complete
+  if (numberedCellsInPath.length !== numberedCells.length) return false;
+
+  // Check if the numbered cells in the path are in ascending order
+  for (let i = 0; i < numberedCellsInPath.length - 1; i++) {
+    const currentNumber = numberedCellsInPath[i].number || 0;
+    const nextNumber = numberedCellsInPath[i + 1].number || 0;
+    if (nextNumber <= currentNumber) return false;
   }
 
-  // Check if we found all numbered cells in the path
-  return numberedCellIndex === numberedCells.length;
+  return true;
 };
 
 const handleCompletionModalComplete = () => {
