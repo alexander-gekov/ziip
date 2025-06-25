@@ -3,6 +3,16 @@ import { prisma } from "~/lib/prisma";
 import { generateLevel } from "~/utils/levelGenerator";
 import type { Level } from "~/utils/levelGenerator";
 
+const getRandomDifficulty = (): "easy" | "medium" | "hard" => {
+  const difficulties: ("easy" | "medium" | "hard")[] = [
+    "easy",
+    "medium",
+    "hard",
+  ];
+  const randomIndex = Math.floor(Math.random() * difficulties.length);
+  return difficulties[randomIndex];
+};
+
 export default defineEventHandler(async (event) => {
   try {
     const today = new Date();
@@ -18,7 +28,8 @@ export default defineEventHandler(async (event) => {
       // Generate new puzzle for today
       const seed =
         today.getDate() + today.getMonth() * 31 + today.getFullYear() * 365;
-      const level = generateLevel("easy", seed);
+      const difficulty = getRandomDifficulty();
+      const level = generateLevel(difficulty, seed);
 
       // Get the next puzzle number
       const lastPuzzle = await prisma.dailyPuzzle.findFirst({
