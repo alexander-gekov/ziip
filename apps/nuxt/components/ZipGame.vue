@@ -17,6 +17,7 @@ import GameGrid from "./GameGrid.vue";
 import GameControls from "./GameControls.vue";
 import GameInstructions from "./GameInstructions.vue";
 import CompletionModal from "./CompletionModal.vue";
+import LeaderboardMenu from "./LeaderboardMenu.vue";
 import type { Cell, GameState as ImportedGameState } from "../types/game";
 import { formatTime } from "../utils/format";
 
@@ -497,7 +498,11 @@ const checkWinCondition = (grid: Cell[][], path: string[]): boolean => {
 
 const handleCompletionModalComplete = () => {
   showCompletionModal.value = false;
-  toast.success("Congratulations! You solved today's puzzle!");
+  toast.success(
+    `Congratulations! You solved ${
+      isPracticeMode.value ? "this" : "today's"
+    } puzzle!`
+  );
   isPracticeMode.value = true;
 };
 
@@ -866,19 +871,29 @@ const handleCompletion = () => {
     </div>
 
     <div v-else class="space-y-4">
-      <div class="flex justify-center items-center gap-8 text-lg">
-        <div class="flex items-center gap-2">
-          <LucideMove class="w-4 h-4" />
-          {{ gameState.moves }}
+      <div class="flex justify-between items-center">
+        <div class="flex items-center gap-8 text-lg">
+          <div class="flex items-center gap-2">
+            <LucideMove class="w-4 h-4" />
+            {{ gameState.moves }}
+          </div>
+          <div class="flex items-center gap-2">
+            <LucideClock class="w-4 h-4" />
+            {{ formatTime(timeElapsed) }}
+          </div>
+          <div class="flex items-center gap-2">
+            <LucideLightbulb class="w-4 h-4" />
+            {{ gameState.hintsUsed }}
+          </div>
         </div>
-        <div class="flex items-center gap-2">
-          <LucideClock class="w-4 h-4" />
-          {{ formatTime(timeElapsed) }}
-        </div>
-        <div class="flex items-center gap-2">
-          <LucideLightbulb class="w-4 h-4" />
-          {{ gameState.hintsUsed }}
-        </div>
+        <LeaderboardMenu
+          v-if="!isPracticeMode"
+          :puzzle-id="currentPuzzle?.id || 0"
+          :puzzle-number="currentPuzzle?.puzzleNumber || 0"
+          :colors="gameColors"
+          :time-elapsed="timeElapsed"
+          :moves="gameState.moves"
+          :hints-used="gameState.hintsUsed" />
       </div>
 
       <GameGrid
