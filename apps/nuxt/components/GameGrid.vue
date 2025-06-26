@@ -297,7 +297,7 @@ const getCellClasses = (cell: Cell) => {
     "aspect-square transition-all duration-300 cursor-pointer relative",
     "flex items-center justify-center",
     {
-      "bg-white dark:bg-gray-800":
+      "bg-white dark:bg-background":
         !cell.isFilled && !cell.isHighlighted && !isInCurrentPath,
       [props.colors.filledBg]: cell.isFilled && !isInCurrentPath,
       "border-0 shadow-none": isInCurrentPath,
@@ -306,10 +306,10 @@ const getCellClasses = (cell: Cell) => {
       "shadow-inner": cell.isFilled,
       "border border-gray-300 dark:border-gray-600":
         !isInCurrentPath && !cell.isFilled,
-      "border-t-4 border-t-gray-800 dark:border-t-gray-900": cell.walls?.top,
-      "border-r-4 border-r-gray-800 dark:border-r-gray-900": cell.walls?.right,
-      "border-b-4 border-b-gray-800 dark:border-b-gray-900": cell.walls?.bottom,
-      "border-l-4 border-l-gray-800 dark:border-l-gray-900": cell.walls?.left,
+      "border-t-4 border-t-gray-800 dark:border-t-gray-200": cell.walls?.top,
+      "border-r-4 border-r-gray-800 dark:border-r-gray-200": cell.walls?.right,
+      "border-b-4 border-b-gray-800 dark:border-b-gray-200": cell.walls?.bottom,
+      "border-l-4 border-l-gray-800 dark:border-l-gray-200": cell.walls?.left,
     },
   ];
 };

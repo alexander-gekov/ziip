@@ -1,6 +1,6 @@
 <template>
   <div>
-    <ZipGame class="pb-10" />
+    <ZipGame class="pb-20" />
     <Footer class="fixed bottom-0 w-full" />
   </div>
 </template>

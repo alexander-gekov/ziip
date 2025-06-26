@@ -288,20 +288,20 @@ const getUserRank = (userTime: number): number => {
             Amazing!
           </div>
 
-          <div class="text-5xl font-bold text-gray-800 font-mono mb-6">
+          <div class="text-5xl font-bold text-foreground font-mono mb-6">
             {{ formatTime(timeElapsed) }}
           </div>
 
-          <div class="text-2xl font-bold text-gray-800 mb-4">
+          <div class="text-2xl font-bold text-foreground mb-4">
             Puzzle Complete!
           </div>
 
-          <div class="text-lg text-gray-600 mb-8">
+          <div class="text-lg text-muted-foreground mb-8">
             You've successfully connected all the dots! 🔗
           </div>
 
           <Button
-            class="w-full py-3 px-4 font-semibold text-white"
+            class="w-full py-3 px-4 font-semibold text-primary"
             :style="{
               backgroundImage: `linear-gradient(to right, ${colors.start}, ${colors.end})`,
             }"
@@ -329,15 +329,17 @@ const getUserRank = (userTime: number): number => {
             </span>
           </DialogTitle>
 
-          <div class="text-lg text-gray-600 mb-6">You're crushing it!</div>
+          <div class="text-lg text-muted-foreground mb-6">
+            You're crushing it!
+          </div>
 
           <!-- Performance Stats -->
           <div
-            class="bg-gradient-to-r from-orange-50 to-yellow-50 rounded-xl p-6 mb-6">
-            <div class="text-5xl font-bold text-gray-800 font-mono mb-2">
+            class="bg-gradient-to-r from-orange-50 to-yellow-50 dark:from-orange-900 dark:to-yellow-900 rounded-xl p-6 mb-6">
+            <div class="text-5xl font-bold text-foreground font-mono mb-2">
               {{ formatTime(timeElapsed) }}
             </div>
-            <div class="text-sm text-gray-600 mb-4">
+            <div class="text-sm text-muted-foreground mb-4">
               {{
                 hintsUsed > 0
                   ? `with ${hintsUsed} backtrack${hintsUsed > 1 ? "s" : ""}`
@@ -350,26 +352,26 @@ const getUserRank = (userTime: number): number => {
               v-if="puzzleStats && !isLoadingStats"
               class="grid grid-cols-3 gap-4 text-center">
               <div>
-                <div class="text-2xl font-bold text-gray-700">
+                <div class="text-2xl font-bold text-foreground">
                   {{ formatTime(Math.round(puzzleStats.averageTime || 0)) }}
                 </div>
-                <div class="text-xs text-gray-500">Today's avg</div>
+                <div class="text-xs text-muted-foreground">Today's avg</div>
               </div>
               <div>
-                <div class="text-2xl font-bold text-gray-700">
+                <div class="text-2xl font-bold text-foreground">
                   {{ puzzleStats.totalPlays }}
                 </div>
-                <div class="text-xs text-gray-500">Players</div>
+                <div class="text-xs text-muted-foreground">Players</div>
               </div>
               <div>
-                <div class="text-2xl font-bold text-gray-700">
+                <div class="text-2xl font-bold text-foreground">
                   #{{ getUserRank(timeElapsed) }}
                 </div>
-                <div class="text-xs text-gray-500">Your rank</div>
+                <div class="text-xs text-muted-foreground">Your rank</div>
               </div>
             </div>
 
-            <div v-else-if="isLoadingStats" class="text-center text-gray-500">
+            <div v-else-if="isLoadingStats" class="text-center text-primary">
               Loading stats...
             </div>
           </div>
@@ -377,7 +379,7 @@ const getUserRank = (userTime: number): number => {
           <!-- Name Input & Submit -->
           <div v-if="!hasSubmitted" class="space-y-4 mb-6">
             <div>
-              <Label for="userName" class="text-sm font-medium text-gray-700"
+              <Label for="userName" class="text-sm font-medium text-foreground"
                 >Share your name for the leaderboard</Label
               >
               <Input
@@ -391,7 +393,7 @@ const getUserRank = (userTime: number): number => {
             <Button
               @click="submitScore"
               :disabled="!userName.trim() || isSubmitting"
-              class="w-full"
+              class="w-full text-primary"
               :style="{
                 backgroundImage: `linear-gradient(to right, ${colors.start}, ${colors.end})`,
               }">
@@ -425,8 +427,8 @@ const getUserRank = (userTime: number): number => {
           </div>
 
           <!-- Leaderboard -->
-          <div v-if="showLeaderboard" class="bg-gray-50 rounded-lg p-4 mb-6">
-            <h3 class="font-semibold text-gray-800 mb-3">
+          <div v-if="showLeaderboard" class="border p-4 mb-6">
+            <h3 class="font-semibold text-foreground mb-3">
               Today's Leaderboard
             </h3>
             <div class="space-y-2 max-h-48 overflow-y-auto">

@@ -85,15 +85,15 @@ const handleClose = () => {
         </DialogTitle>
 
         <div class="space-y-4">
-          <div class="text-6xl font-bold text-gray-800 font-mono">
+          <div class="text-6xl font-bold text-foreground font-mono">
             {{ formatTime(timeElapsed) }}
           </div>
-          <p class="text-xl text-gray-700 font-medium">Puzzle Complete!</p>
-          <p class="text-sm text-gray-500">
+          <p class="text-xl text-foreground font-medium">Puzzle Complete!</p>
+          <p class="text-sm text-muted-foreground">
             You've successfully connected all the dots! 🔗
           </p>
           <button
-            class="w-full py-3 px-4 rounded-lg font-semibold text-white transition-all duration-200 hover:opacity-90 active:scale-95"
+            class="w-full py-3 px-4 rounded-lg font-semibold text-primary transition-all duration-200 hover:opacity-90 active:scale-95"
             :style="{
               backgroundImage: `linear-gradient(to right, ${colors.start}, ${colors.end})`,
             }"

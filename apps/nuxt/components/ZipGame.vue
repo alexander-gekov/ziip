@@ -882,7 +882,8 @@ const colorMode = useColorMode();
       :is-practice-mode="isPracticeMode" />
 
     <div v-if="isLoadingPuzzle || !currentPuzzle" class="text-center py-8">
-      <div class="text-lg flex items-center justify-center gap-2 text-gray-600">
+      <div
+        class="text-lg flex items-center justify-center gap-2 text-muted-foreground">
         Loading today's puzzle... <LucideLoader2 class="animate-spin w-4 h-4" />
       </div>
     </div>

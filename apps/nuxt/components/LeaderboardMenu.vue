@@ -71,12 +71,12 @@ watch(isOpen, (newValue) => {
   <DropdownMenu v-model:open="isOpen">
     <DropdownMenuTrigger
       as="button"
-      class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors">
+      class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-muted transition-colors">
       <LucideTrophy class="w-4 h-4" />
     </DropdownMenuTrigger>
 
     <DropdownMenuContent class="w-80">
-      <DropdownMenuLabel class="font-semibold text-gray-800">
+      <DropdownMenuLabel class="font-semibold text-foreground">
         Ziip #{{ puzzleNumber }} Leaderboard
       </DropdownMenuLabel>
 
@@ -87,22 +87,22 @@ watch(isOpen, (newValue) => {
         v-if="puzzleStats && !isLoadingStats"
         class="grid grid-cols-3 gap-4 text-center p-2">
         <div>
-          <div class="text-lg font-bold text-gray-700">
+          <div class="text-lg font-bold text-foreground">
             {{ formatTime(Math.round(puzzleStats.averageTime || 0)) }}
           </div>
-          <div class="text-xs text-gray-500">Today's avg</div>
+          <div class="text-xs text-muted-foreground">Today's avg</div>
         </div>
         <div>
-          <div class="text-lg font-bold text-gray-700">
+          <div class="text-lg font-bold text-foreground">
             {{ puzzleStats.totalPlays }}
           </div>
-          <div class="text-xs text-gray-500">Players</div>
+          <div class="text-xs text-muted-foreground">Players</div>
         </div>
         <div>
-          <div class="text-lg font-bold text-gray-700">
+          <div class="text-lg font-bold text-foreground">
             #{{ getUserRank(timeElapsed) }}
           </div>
-          <div class="text-xs text-gray-500">Your rank</div>
+          <div class="text-xs text-muted-foreground">Your rank</div>
         </div>
       </div>
 
@@ -110,12 +110,14 @@ watch(isOpen, (newValue) => {
 
       <!-- Leaderboard List -->
       <div class="max-h-64 overflow-y-auto p-2">
-        <div v-if="isLoadingStats" class="text-center text-gray-500 py-2">
+        <div
+          v-if="isLoadingStats"
+          class="text-center text-muted-foreground py-2">
           Loading leaderboard...
         </div>
         <div
           v-else-if="leaderboard.length === 0"
-          class="text-center text-gray-500 py-2">
+          class="text-center text-muted-foreground py-2">
           No scores yet. Be the first to complete this puzzle!
         </div>
         <div
@@ -124,15 +126,15 @@ watch(isOpen, (newValue) => {
           :key="score.id"
           class="flex items-center justify-between p-2 rounded-lg text-sm"
           :class="{
-            'bg-gray-50': score.timeElapsed === timeElapsed,
+            'bg-muted': score.timeElapsed === timeElapsed,
           }">
           <div class="flex items-center space-x-3">
-            <div class="w-6 text-center font-medium text-gray-600">
+            <div class="w-6 text-center font-medium text-muted-foreground">
               {{ index + 1 }}
             </div>
             <div class="font-medium">{{ score.userName }}</div>
           </div>
-          <div class="text-gray-600">
+          <div class="text-muted-foreground">
             {{ formatTime(score.timeElapsed) }}
           </div>
         </div>
