@@ -973,6 +973,14 @@ const colorMode = useColorMode();
         @show-solution="handleShowSolution"
         @random-game="handleRandomGame"
         @solve="animateSolution" />
+
+        <div v-if="!isLoadingPuzzle" class="w-full flex justify-center">
+          <Button class="w-full" variant="outline" as-child>
+            <NuxtLink href="https://taengo.vercel.app/" target="_blank">
+              <span class="mr-2">🏁</span> Play Tängo
+            </NuxtLink>
+          </Button>
+        </div>
     </div>
 
     <CompletionModal
